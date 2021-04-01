@@ -1,8 +1,15 @@
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { AppModule } from './application/app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    logger: false
+  });
+
+  app.useGlobalPipes(new ValidationPipe());
+
   await app.listen(process.env.PORT);
   console.log(`application is running on port ${process.env.PORT}`)
 }
