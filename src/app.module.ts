@@ -1,10 +1,29 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { GraphQLModule } from '@nestjs/graphql';
+import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
+    GraphQLModule.forRoot({
+      autoSchemaFile: true,
+      debug: false,
+      playground: true
+    }),
+    MongooseModule.forRootAsync({
+      useFactory: (env: ConfigService) => ({
+        uri: env.get<string>('MONGODB_URI'),
+        useFindAndModify: true,
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        useCreateIndex: true
+      }),
+      inject: [ConfigService]
+    })
+  ],
 })
 export class AppModule {}
