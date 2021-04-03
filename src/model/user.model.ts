@@ -36,6 +36,16 @@ export class User {
   @Prop({
     type: String,
     required: true,
+    unique: true,
+    minLength: 10,
+    maxlength: 20
+  })
+  @Field(type => String)
+  phonenumber: string;
+
+  @Prop({
+    type: String,
+    required: true,
     minlength: 6
   })
   password: string;
@@ -43,6 +53,7 @@ export class User {
   @Prop({
     type: String,
     required: false,
+    unique: true
   })
   @Field(type => String)
   nim: string;

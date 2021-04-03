@@ -22,9 +22,15 @@ export class AuthenticationModule {
     return {
       module: AuthenticationModule,
       providers: [
-
+        UserService, AuthenticationService
       ],
-      exports: []
+      exports: [
+        MongooseModule.forFeature([{
+          name: User.name,
+          schema: UserSchema
+        }]),
+        UserService, AuthenticationService,
+      ]
     }
   }
 

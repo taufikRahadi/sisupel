@@ -4,6 +4,7 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { MongooseModule } from '@nestjs/mongoose';
 import { join } from 'path';
 import { AuthenticationModule } from './authentication/authentication.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AuthenticationModule } from './authentication/authentication.module';
     GraphQLModule.forRoot({
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       debug: false,
+      context: ({ req }) => ({ headers: req.headers }),
       playground: true
     }),
     MongooseModule.forRootAsync({
@@ -26,7 +28,7 @@ import { AuthenticationModule } from './authentication/authentication.module';
       }),
       inject: [ConfigService]
     }),
-    AuthenticationModule
+    AuthenticationModule, UserModule
   ],
 })
 export class AppModule {}
