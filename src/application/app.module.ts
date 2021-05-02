@@ -5,6 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { join } from 'path';
 import { AuthenticationModule } from './authentication/authentication.module';
 import { RoleModule } from './role/role.module';
+import { UnitModule } from './unit/unit.module';
 import { UserModule } from './user/user.module';
 
 @Module({
@@ -29,7 +30,7 @@ import { UserModule } from './user/user.module';
       }),
       inject: [ConfigService]
     }),
-    AuthenticationModule, UserModule, RoleModule
+    AuthenticationModule, UserModule, RoleModule, UnitModule
   ],
 })
 export class AppModule {}
