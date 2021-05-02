@@ -26,7 +26,18 @@ export class UserGuard implements CanActivate {
 
       const { data }: any = decode(token);
 
-      ctx['user'] = await this.userService.findUserByEmail(data);
+      ctx['user'] = await this.userService.findByUsername(data, [
+        {
+          path: 'role',
+          populate: {
+            path: 'privileges',
+            model: 'RolePrivilege'
+          }
+        },
+        {
+          path: 'unit'
+        }
+      ]);
 
       return true;
     } catch (error) {

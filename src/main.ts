@@ -5,7 +5,7 @@ import { AppModule } from './application/app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    logger: false
+    // logger: false
   });
 
   app.useGlobalPipes(new ValidationPipe({

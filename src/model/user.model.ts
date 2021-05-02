@@ -1,70 +1,62 @@
 
 import { Field, ObjectType } from "@nestjs/graphql";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
+import { Document, Schema as schema } from "mongoose";
+import { BaseModel } from "./base.model";
+import { Role } from "./role.model";
+import { Unit } from "./unit.model";
 
 export type UserDocument = User & Document;
 
-@Schema()
+@Schema({
+  timestamps: true
+})
 @ObjectType()
-export class User {
+export class User extends BaseModel {
 
   @Prop({
     type: String,
     required: true,
     minlength: 3
   })
-  @Field(type => String)
-  firstname: string;
+  @Field(type => String, { nullable: false })
+  fullname: string;
 
   @Prop({
-    type: String,
-    required: false,
+    type: schema.Types.ObjectId,
+    ref: 'Unit'
   })
-  @Field(type => String)
-  lastname?: string;
+  @Field(type => Unit, { nullable: true })
+  unit: Unit | string;
 
   @Prop({
     type: String,
-    required: true,
     unique: true,
-    maxlength: 30
+    required: true,
+    minLength: 6
   })
-  @Field(type => String)
-  email: string;
+  @Field(type => String, { nullable: false })
+  username: string;
 
   @Prop({
     type: String,
     required: true,
-    unique: true,
-    minLength: 10,
-    maxlength: 20
-  })
-  @Field(type => String)
-  phonenumber: string;
-
-  @Prop({
-    type: String,
-    required: true,
-    minlength: 6
+    minLength: 8
   })
   password: string;
 
   @Prop({
-    type: String,
-    required: false,
-    unique: true
+    type: schema.Types.ObjectId,
+    ref: 'Role'
   })
-  @Field(type => String)
-  nim: string;
+  @Field(type => Role, { nullable: false })
+  role: Role | string;
 
   @Prop({
-    type: Boolean,
-    required: true,
-    default: false
+    type: schema.Types.ObjectId,
+    ref: 'User'
   })
-  @Field(type => Boolean)
-  isAdmin?: boolean;
+  lastModifiedBy?: string;
 
 }
 

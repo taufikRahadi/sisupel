@@ -4,6 +4,7 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { MongooseModule } from '@nestjs/mongoose';
 import { join } from 'path';
 import { AuthenticationModule } from './authentication/authentication.module';
+import { RoleModule } from './role/role.module';
 import { UserModule } from './user/user.module';
 
 @Module({
@@ -28,7 +29,7 @@ import { UserModule } from './user/user.module';
       }),
       inject: [ConfigService]
     }),
-    AuthenticationModule, UserModule
+    AuthenticationModule, UserModule, RoleModule
   ],
 })
 export class AppModule {}

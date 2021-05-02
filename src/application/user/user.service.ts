@@ -3,27 +3,35 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { User, UserDocument } from "src/model/user.model";
 import { compareSync, genSaltSync, hashSync } from 'bcrypt';
+import { Role, RoleDocument } from "src/model/role.model";
+import { RolePrivilege, RolePrivilegeDocument } from "src/model/role-privileges.model";
+import { Unit, UnitDocument } from "src/model/unit.model";
 
 @Injectable()
 export class UserService {
 
   constructor(
-    @InjectModel(User.name) private userModel: Model<UserDocument>
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Role.name) private roleModel: Model<RoleDocument>,
+    @InjectModel(RolePrivilege.name) private rolePrivilege: Model<RolePrivilegeDocument>,
+    @InjectModel(Unit.name) private readonly unitModel: Model<UnitDocument>,
   ) {}
 
-  async findUserByEmail(email: string) {
+  async findByUsername(username: string, populate?: string[] | object[]) {
     try {
-      const user = await this.userModel.findOne({
-        email
-      });
+      return await this.userModel.findOne({
+        username
+      }).populate(populate)
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
 
-      // if (!user) throw new BadRequestException(`user dengan email ${email} tidak ditemukan`)
-
-      return user;
-    } catch (error) {   
-      console.log(error);
-         
-      throw new InternalServerErrorException('terjadi masalah pada server')
+  async findById(id: string) {
+    try {
+      return await this.userModel.findById(id)
+    } catch (error) {
+      throw new InternalServerErrorException(error)
     }
   }
 
@@ -36,7 +44,7 @@ export class UserService {
 
       return newUser;
     } catch (error) {
-      if (error.code == 11000) throw new BadRequestException(`alamat email / no hp sudah digunakan`)
+      if (error.code == 11000) throw new BadRequestException(`User dengan username '${user.username}' sudah di gunakan`)
 
       throw new InternalServerErrorException('terjadi masalah pada server')
     }
