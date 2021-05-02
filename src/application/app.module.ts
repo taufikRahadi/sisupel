@@ -5,6 +5,9 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { join } from 'path';
 import { AuthenticationModule } from './authentication/authentication.module';
 import { RoleModule } from './role/role.module';
+import { SurveyAnswerModule } from './survey-answer/survey-answer.module';
+import { SurveyQuestionModule } from './survey-question/survey-question.module';
+import { SurveyModule } from './survey/survey.module';
 import { UnitModule } from './unit/unit.module';
 import { UserModule } from './user/user.module';
 
@@ -30,7 +33,8 @@ import { UserModule } from './user/user.module';
       }),
       inject: [ConfigService]
     }),
-    AuthenticationModule, UserModule, RoleModule, UnitModule
+    AuthenticationModule, UserModule, RoleModule, UnitModule, SurveyModule,
+    SurveyAnswerModule, SurveyQuestionModule
   ],
 })
 export class AppModule {}
