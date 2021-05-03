@@ -21,7 +21,8 @@ import { UserModule } from './user/user.module';
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       debug: false,
       context: ({ req }) => ({ headers: req.headers }),
-      playground: true
+      playground: true,
+      introspection: true
     }),
     MongooseModule.forRootAsync({
       useFactory: (env: ConfigService) => ({
