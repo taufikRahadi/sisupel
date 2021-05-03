@@ -5,6 +5,7 @@ import { Model } from "mongoose";
 import { PrivilegesGuard } from "src/infrastructure/privileges.guard";
 import { UserGuard } from "src/infrastructure/user.guard";
 import { SurveyAnswer, SurveyAnswerDocument } from "src/model/survey-answer.model";
+import { User } from "src/model/user.model";
 import { IsAllowTo } from "src/utils/decorators/privileges.decorator";
 import { CreateSurveyAnswerPayload } from "./survey-answer.type";
 

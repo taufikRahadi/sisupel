@@ -11,20 +11,9 @@ export type SurveyDocument = Survey & Document;
 @ObjectType()
 export class Survey extends BaseModel {
 
-  @Prop([
-    {
-      type: {
-        questions: {
-          type: schema.Types.ObjectId,
-          ref: 'SurveyQuestion'
-        },
-        answers: {
-          type: schema.Types.ObjectId,
-          ref: 'SurveyAnswer'
-        }
-      }
-    }
-  ])
+  @Prop({
+    type: Array
+  })
   // @Field(type => )
   body: any[];
 
