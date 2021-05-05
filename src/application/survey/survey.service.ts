@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import { BadRequestException, Injectable, InternalServerErrorException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Survey, SurveyDocument } from "src/model/survey.model";
@@ -46,12 +46,13 @@ export class SurveyService {
         total.push(surveyTotal / survey.length)
       })
 
-      console.log(total.reduce((x, y) => x / total.length));
-
-      return {
-        totalSurvey: total.length,
-        average: total.reduce((x, y) => x / total.length)
+      if (total.length > 0) {
+        return {
+          totalSurvey: total.length,
+          average: total.reduce((x, y) => x / total.length)
+        }
       }
+      throw new BadRequestException('Kamu belum memiliki survey penilaian')
     } catch (error) {
       throw new InternalServerErrorException(error)
     }
