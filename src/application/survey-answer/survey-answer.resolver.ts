@@ -1,5 +1,5 @@
 import { InternalServerErrorException, UseGuards } from "@nestjs/common";
-import { Args, Context, Mutation, Resolver } from "@nestjs/graphql";
+import { Args, Context, Mutation, Query, Resolver } from "@nestjs/graphql";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { PrivilegesGuard } from "src/infrastructure/privileges.guard";
@@ -15,6 +15,17 @@ export class SurveyAnswerResolver {
   constructor(
     @InjectModel(SurveyAnswer.name) private readonly surveyAnswerModel: Model<SurveyAnswerDocument>
   ) {}
+
+  @Query(returns => [SurveyAnswer])
+  async getAnswer(
+    @Args('limit', { type: () => Number, defaultValue: 5 }) limit: number
+  ) {
+    try {
+      return await this.surveyAnswerModel.find().limit(limit)
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
 
   @Mutation(returns => Boolean)
   @UseGuards(UserGuard, PrivilegesGuard)
