@@ -33,7 +33,6 @@ export class SurveyService {
 
       const mapped: SurveyBody[][] = survey.map(s => s.body)
       let total: number[] = []
-      let defaultScore = 0;
       const average = survey.map(s => {
         const body: SurveyBody[] = s.body;
 
@@ -49,7 +48,7 @@ export class SurveyService {
       if (total.length > 0) {
         return {
           totalSurvey: total.length,
-          average: total.reduce((x, y) => x / total.length)
+          average: total.reduce((x, y) => (x + y) / total.length)
         }
       }
       throw new BadRequestException('Kamu belum memiliki survey penilaian')

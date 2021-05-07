@@ -22,7 +22,7 @@ import { UserModule } from './user/user.module';
       debug: false,
       context: ({ req }) => ({ headers: req.headers }),
       playground: true,
-      introspection: Boolean(process.env.NODE_ENV)
+      introspection: true
     }),
     MongooseModule.forRootAsync({
       useFactory: (env: ConfigService) => ({
