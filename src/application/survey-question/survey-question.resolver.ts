@@ -21,7 +21,9 @@ export class SurveyQuestionResolver {
     @Args('limit', { type: () => Number, defaultValue: 10 }) limit: number
   ) {
     try {
-      return await this.surveyQuestionModel.find().limit(limit)
+      return await this.surveyQuestionModel.find({
+        isActive: true
+      }).limit(limit)
     } catch (error) {
       throw new InternalServerErrorException(error)
     }

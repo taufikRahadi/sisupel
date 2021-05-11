@@ -1,6 +1,6 @@
 import { ArgsType, Field, Float, InputType, ObjectType } from "@nestjs/graphql";
 import { Type } from "class-transformer";
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsNotEmpty, IsString, ValidateNested } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested } from "class-validator";
 import { SurveyAnswer } from "src/model/survey-answer.model";
 import { SurveyQuestion } from "src/model/survey-question.model";
 
@@ -15,14 +15,19 @@ export class SurveyBodyPayload {
   @IsString()
   @IsNotEmpty()
   answer: string;
+
+  @Field(type => String, { nullable: true })
+  @IsString()
+  @IsOptional()
+  text: string;
 }
 
 @ArgsType()
 export class CreateSurveyPayload {
   @Field(type => [SurveyBodyPayload])
   @IsArray()
-  @ArrayMinSize(10)
-  @ArrayMaxSize(10)
+  @ArrayMinSize(8)
+  @ArrayMaxSize(8)
   @ValidateNested({ each: true })
   @Type(() => SurveyBodyPayload)
   body: SurveyBodyPayload[];
