@@ -42,3 +42,11 @@ export class CalculateAverage {
   @Field(type => Float)
   average: number;
 }
+
+@ObjectType()
+export class CalculateAverageUnit extends CalculateAverage {
+
+  @Field(type => String)
+  unitName: string;
+
+}
