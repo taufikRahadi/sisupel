@@ -21,7 +21,10 @@ export class AuthenticationResolver {
   async signIn(
     @Args() payload: SignInPayload
   ): Promise<SignInResponse> {
-    const user = await this.userService.findByUsername(payload.username)
+    const user = await this.userService.findByUsername(payload.email)
+    if (!user)
+      throw new BadRequestException(`User dengan email '${payload.email}' tidak ditemukan`)
+
     if (!this.userService.comparePassword(payload.password, user.password))
       throw new BadRequestException('Kata sandi salah')
 
@@ -30,12 +33,12 @@ export class AuthenticationResolver {
 
     const accessToken = sign({
       exp: accessTokenExpiration,
-      data: user.username,
+      data: user.email,
     }, this.configService.get<string>('JWT_SECRET'))
 
     const refreshToken = sign({
       exp: refreshTokenExpiration,
-      data: user.username,
+      data: user.email,
       rememberMe: payload.rememberMe
     }, `${this.configService.get<string>('JWT_SECRET')}-refresh`)
 
