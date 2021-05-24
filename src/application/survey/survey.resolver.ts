@@ -5,7 +5,7 @@ import { UserGuard } from "src/infrastructure/user.guard";
 import { User } from "src/model/user.model";
 import { IsAllowTo } from "src/utils/decorators/privileges.decorator";
 import { SurveyService } from "./survey.service";
-import { CalculateAverage, CreateSurveyPayload } from "./survey.type";
+import { CalculateAverage, CalculateAverageUnit, CreateSurveyPayload } from "./survey.type";
 
 @Resolver()
 export class SurveyResolver {
@@ -40,6 +40,31 @@ export class SurveyResolver {
     @Context('user') { _id }: User
   ) {
     return await this.surveyService.calculateAverage(_id)
+  }
+
+  @Query(returns => CalculateAverageUnit)
+  @UseGuards(UserGuard, PrivilegesGuard)
+  @IsAllowTo('calculate-unit-survey')
+  async calculateUnitSurvey(
+    @Context('user') { _id } : User,
+    @Args('unit', { type: () => String }) unit: string,
+  ) {
+    try {
+      return this.surveyService.calculateAverageUnit(_id, unit);
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  @Query(returns => CalculateAverage)
+  @UseGuards(UserGuard, PrivilegesGuard)
+  @IsAllowTo('calculate-global-survey')
+  async calculateGlobalSurvey() {
+    try {
+      return this.surveyService.calculateAverageGlobal();
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
   }
 
 }
