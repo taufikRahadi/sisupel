@@ -21,6 +21,30 @@ export class SurveyService {
     }
   }
 
+  async getMySurvey(user: string, limit: number | undefined) {
+    try {
+      const surveys = await this.surveyModel
+        .find({
+          user
+        }).populate([
+          {
+            path: 'answer',
+            model: 'SurveyAnswer'
+          },
+          {
+            path: 'question',
+            model: 'SurveyQuestion'
+          }
+        ])
+        .sort({ 'createdAt': 'asc' })
+        .limit(limit)
+
+      return surveys
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
   async calculateAverage(user?: string, includeData: boolean = false): Promise<CalculateAverage> {
     try {
       const survey = await this.surveyModel.find({

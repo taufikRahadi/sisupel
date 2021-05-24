@@ -21,10 +21,10 @@ export class CreateUserPayload {
   @Field(type => String)
   role: string;
 
-  @IsString()
+  @IsEmail()
   @IsNotEmpty()
   @Field(type => String)
-  username: string;
+  email: string;
 
   @IsString()
   @IsNotEmpty()

@@ -3,6 +3,7 @@ import { Type } from "class-transformer";
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsNotEmpty, IsString, ValidateNested } from "class-validator";
 import { SurveyAnswer } from "src/model/survey-answer.model";
 import { SurveyQuestion } from "src/model/survey-question.model";
+import { Survey } from "src/model/survey.model";
 
 @InputType()
 export class SurveyBodyPayload {
@@ -26,6 +27,11 @@ export class CreateSurveyPayload {
   @ValidateNested({ each: true })
   @Type(() => SurveyBodyPayload)
   body: SurveyBodyPayload[];
+}
+
+@ObjectType()
+export class SurveyResponse extends Survey {
+  // @Field(type => )
 }
 
 export class SurveyBody {
