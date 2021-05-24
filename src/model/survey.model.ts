@@ -17,7 +17,6 @@ export class Survey extends BaseModel {
       answer: schema.Types.ObjectId
     }]
   })
-  // @Field(type => )
   body: any[];
 
   @Prop({
@@ -27,5 +26,8 @@ export class Survey extends BaseModel {
   user: string;
 
 }
+
+@ObjectType()
+export class SurveyBodyType {}
 
 export const SurveyModel = SchemaFactory.createForClass(Survey)
