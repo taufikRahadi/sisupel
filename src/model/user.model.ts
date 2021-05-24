@@ -36,7 +36,7 @@ export class User extends BaseModel {
     minLength: 6
   })
   @Field(type => String, { nullable: false })
-  username: string;
+  email: string;
 
   @Prop({
     type: String,

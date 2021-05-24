@@ -8,7 +8,7 @@ export class SignInPayload {
   @IsString()
   @IsNotEmpty()
   @Field(type => String)
-  username: string;
+  email: string;
 
   @IsString()
   @IsNotEmpty()

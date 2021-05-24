@@ -17,10 +17,10 @@ export class UserService {
     @InjectModel(Unit.name) private readonly unitModel: Model<UnitDocument>,
   ) {}
 
-  async findByUsername(username: string, populate?: string[] | object[]) {
+  async findByUsername(email: string, populate?: string[] | object[]) {
     try {
       return await this.userModel.findOne({
-        username
+        email
       }).populate(populate)
     } catch (error) {
       throw new InternalServerErrorException(error)
@@ -44,7 +44,7 @@ export class UserService {
 
       return newUser;
     } catch (error) {
-      if (error.code == 11000) throw new BadRequestException(`User dengan username '${user.username}' sudah di gunakan`)
+      if (error.code == 11000) throw new BadRequestException(`User dengan Email '${user.email}' sudah di gunakan`)
 
       throw new InternalServerErrorException('terjadi masalah pada server')
     }
