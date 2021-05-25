@@ -3,7 +3,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Survey, SurveyDocument } from "src/model/survey.model";
 import { Unit, UnitDocument } from "src/model/unit.model";
-import { CalculateAverage, CalculateAverageUnit, SurveyBody, SurveyBodyPayload } from "./survey.type";
+import { CalculateAverage, CalculateAverageUnitGlobal, SurveyBody, SurveyBodyPayload } from "./survey.type";
 
 @Injectable()
 export class SurveyService {
@@ -83,7 +83,7 @@ export class SurveyService {
     }
   }
 
-  async calculateAverageUnit(user?: any, unit?: any) {
+  async calculateAverageUnit(user?: any, unit?: any, all: boolean = false) {
     const findUnit = await this.unitModel.findOne({
       name: unit
     });
@@ -136,25 +136,57 @@ export class SurveyService {
             "$ne": 0
           }
         }
+      },
+      {
+        "$group": {
+          "_id": "$question.question",
+          "averageAnswer": {
+            "$avg": "$answer.value"
+          },
+          "count": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "surveyQuestion": "$_id",
+          "averageAnswer": "$averageAnswer",
+          "sum": 1,
+          "count": 1
+        }
       }
     ]);
 
-    let total_answer: number = 0;
-    survey.forEach((value) => {
-      total_answer += value.answer.value
-    });
+    if (all) {
+      let total_average = 0;
+      survey.forEach((value) => {
+        total_average += value.averageAnswer
+      });
 
-    const result: CalculateAverageUnit = {
+      const result: CalculateAverageUnitGlobal = {
+        unitName: unit,
+        data: [
+          {
+            averageAnswer: total_average / survey.length
+          }
+        ]
+      };
+
+      return result
+    }
+
+    const result: CalculateAverageUnitGlobal = {
       unitName: unit,
-      average: total_answer/survey.length,
-      totalSurvey: survey.length
+      data: survey
     };
 
     return result
 
   }
 
-  async calculateAverageGlobal() {
+  async calculateAverageGlobal(all: boolean =  false) {
     
     const survey = await this.surveyModel.aggregate([
       {
@@ -199,17 +231,48 @@ export class SurveyService {
             "$ne": 0
           }
         }
+      },
+      {
+        "$group": {
+          "_id": "$question.question",
+          "averageAnswer": {
+            "$avg": "$answer.value"
+          },
+          "count": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "surveyQuestion": "$_id",
+          "averageAnswer": "$averageAnswer",
+          "sum": 1,
+          "count": 1
+        }
       }
     ]);
 
-    let total_answer: number = 0;
-    survey.forEach((value) => {
-      total_answer += value.answer.value
-    });
+    if (all) {
+      let total_average = 0;
+      survey.forEach((value) => {
+        total_average += value.averageAnswer
+      });
 
-    const result: CalculateAverage = {
-      average: total_answer/survey.length,
-      totalSurvey: survey.length
+      const result: CalculateAverageUnitGlobal = {
+        data: [
+          {
+            averageAnswer: total_average / survey.length
+          }
+        ]
+      };
+
+      return result
+    }
+
+    const result: CalculateAverageUnitGlobal = {
+      data: survey
     };
 
     return result

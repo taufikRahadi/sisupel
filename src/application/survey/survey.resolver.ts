@@ -7,7 +7,7 @@ import { Survey } from "src/model/survey.model";
 import { User } from "src/model/user.model";
 import { IsAllowTo } from "src/utils/decorators/privileges.decorator";
 import { SurveyService } from "./survey.service";
-import { CalculateAverage, CreateSurveyPayload, SurveyResponse, CalculateAverageUnit } from "./survey.type";
+import { CalculateAverage, CreateSurveyPayload, SurveyResponse, CalculateAverageUnitGlobal } from "./survey.type";
 
 @Resolver(of => SurveyResponse)
 export class SurveyResolver {
@@ -55,26 +55,29 @@ export class SurveyResolver {
     return await this.surveyService.calculateAverage(_id)
   }
 
-  @Query(returns => CalculateAverageUnit)
+  @Query(returns => CalculateAverageUnitGlobal)
   @UseGuards(UserGuard, PrivilegesGuard)
   @IsAllowTo('calculate-unit-survey')
   async calculateUnitSurvey(
     @Context('user') { _id } : User,
     @Args('unit', { type: () => String }) unit: string,
+    @Args('all', { type: () => Boolean, defaultValue: false }) all: boolean,
   ) {
     try {
-      return this.surveyService.calculateAverageUnit(_id, unit);
+      return this.surveyService.calculateAverageUnit(_id, unit, all);
     } catch (error) {
       throw new InternalServerErrorException(error);
     }
   }
 
-  @Query(returns => CalculateAverage)
+  @Query(returns => CalculateAverageUnitGlobal)
   @UseGuards(UserGuard, PrivilegesGuard)
   @IsAllowTo('calculate-global-survey')
-  async calculateGlobalSurvey() {
+  async calculateGlobalSurvey(
+    @Args('all', { type: () => Boolean, defaultValue: false }) all: boolean,
+  ) {
     try {
-      return this.surveyService.calculateAverageGlobal();
+      return this.surveyService.calculateAverageGlobal(all);
     } catch (error) {
       throw new InternalServerErrorException(error);
     }
