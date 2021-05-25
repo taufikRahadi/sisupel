@@ -88,7 +88,7 @@ export class SurveyService {
       name: unit
     });
 
-    const survey = await this.surveyModel.aggregate([
+    const present_survey = await this.surveyModel.aggregate([
       {
         "$lookup": {
           "from": "users",
@@ -102,7 +102,86 @@ export class SurveyService {
       },
       {
         "$match": {
-          "user.unit": findUnit._id
+          "user.unit": findUnit._id,
+          "createdAt": {
+            "$lte": new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()+1} 00:00:00`),
+            "$gte": new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()} 00:00:00`)
+          }
+        }
+      },
+      {
+        "$unwind": "$body",
+      },
+      {
+        "$lookup": {
+          "from": "surveyquestions",
+          "localField": "body.question",
+          "foreignField": "_id",
+          "as": "question"
+        }
+      },
+      {
+        "$lookup": {
+          "from": "surveyanswers",
+          "localField": "body.answer",
+          "foreignField": "_id",
+          "as": "answer"
+        }
+      },
+      {
+        "$unwind": "$question"
+      },
+      {
+        "$unwind": "$answer"
+      },
+      {
+        "$match": {
+          "answer.value": {
+            "$ne": 0
+          }
+        }
+      },
+      {
+        "$group": {
+          "_id": "$question.question",
+          "averageAnswer": {
+            "$avg": "$answer.value"
+          },
+          "count": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "surveyQuestion": "$_id",
+          "averageAnswer": "$averageAnswer",
+          "sum": 1,
+          "count": 1
+        }
+      }
+    ]);
+
+    const yesterday_survey = await this.surveyModel.aggregate([
+      {
+        "$lookup": {
+          "from": "users",
+          "localField": "user",
+          "foreignField": "_id",
+          "as": "user"
+        }
+      },
+      {
+        "$unwind": "$user"
+      },
+      {
+        "$match": {
+          "user.unit": findUnit._id,
+          "createdAt": {
+            "$lte": new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()} 00:00:00`),
+            "$gte": new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()-1} 00:00:00`)
+          }
         }
       },
       {
@@ -160,18 +239,32 @@ export class SurveyService {
     ]);
 
     if (all) {
-      let total_average = 0;
-      survey.forEach((value) => {
-        total_average += value.averageAnswer
+      let total_average = {
+        present: 0,
+        past: 0
+      }
+      present_survey.forEach((value) => {
+        total_average.present += value.averageAnswer
       });
+
+      yesterday_survey.forEach((value) => {
+        total_average.past += value.averageAnswer
+      })
 
       const result: CalculateAverageUnitGlobal = {
         unitName: unit,
-        data: [
-          {
-            averageAnswer: total_average / survey.length
-          }
-        ]
+        data: {
+          present: [
+            {
+              averageAnswer: total_average.present / present_survey.length
+            }
+          ],
+          yesterday: [
+            {
+              averageAnswer: total_average.past / yesterday_survey.length
+            }
+          ]
+        }
       };
 
       return result
@@ -179,7 +272,10 @@ export class SurveyService {
 
     const result: CalculateAverageUnitGlobal = {
       unitName: unit,
-      data: survey
+      data: {
+        present: present_survey,
+        yesterday: yesterday_survey
+      }
     };
 
     return result
@@ -188,7 +284,7 @@ export class SurveyService {
 
   async calculateAverageGlobal(all: boolean =  false) {
     
-    const survey = await this.surveyModel.aggregate([
+    const present_survey = await this.surveyModel.aggregate([
       {
         "$lookup": {
           "from": "users",
@@ -199,6 +295,88 @@ export class SurveyService {
       },
       {
         "$unwind": "$user"
+      },
+      {
+        "$match": {
+          "createdAt": {
+            "$lte": new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()+1} 00:00:00`),
+            "$gte": new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()} 00:00:00`)
+          }
+        }
+      },
+      {
+        "$unwind": "$body",
+      },
+      {
+        "$lookup": {
+          "from": "surveyquestions",
+          "localField": "body.question",
+          "foreignField": "_id",
+          "as": "question"
+        }
+      },
+      {
+        "$lookup": {
+          "from": "surveyanswers",
+          "localField": "body.answer",
+          "foreignField": "_id",
+          "as": "answer"
+        }
+      },
+      {
+        "$unwind": "$question"
+      },
+      {
+        "$unwind": "$answer"
+      },
+      {
+        "$match": {
+          "answer.value": {
+            "$ne": 0
+          }
+        }
+      },
+      {
+        "$group": {
+          "_id": "$question.question",
+          "averageAnswer": {
+            "$avg": "$answer.value"
+          },
+          "count": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "surveyQuestion": "$_id",
+          "averageAnswer": "$averageAnswer",
+          "sum": 1,
+          "count": 1
+        }
+      }
+    ]);
+
+    const yesterday_survey = await this.surveyModel.aggregate([
+      {
+        "$lookup": {
+          "from": "users",
+          "localField": "user",
+          "foreignField": "_id",
+          "as": "user"
+        }
+      },
+      {
+        "$unwind": "$user"
+      },
+      {
+        "$match": {
+          "createdAt": {
+            "$lte": new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()} 00:00:00`),
+            "$gte": new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()-1} 00:00:00`)
+          }
+        }
       },
       {
         "$unwind": "$body",
@@ -255,24 +433,41 @@ export class SurveyService {
     ]);
 
     if (all) {
-      let total_average = 0;
-      survey.forEach((value) => {
-        total_average += value.averageAnswer
+      let total_average = {
+        present: 0,
+        past: 0
+      }
+      present_survey.forEach((value) => {
+        total_average.present += value.averageAnswer
       });
 
+      yesterday_survey.forEach((value) => {
+        total_average.past += value.averageAnswer
+      })
+
       const result: CalculateAverageUnitGlobal = {
-        data: [
-          {
-            averageAnswer: total_average / survey.length
-          }
-        ]
+        data: {
+          present: [
+            {
+              averageAnswer: total_average.present / present_survey.length
+            }
+          ],
+          yesterday: [
+            {
+              averageAnswer: total_average.past / yesterday_survey.length
+            }
+          ]
+        }
       };
 
       return result
     }
 
     const result: CalculateAverageUnitGlobal = {
-      data: survey
+      data: {
+        present: present_survey,
+        yesterday: yesterday_survey
+      }
     };
 
     return result
