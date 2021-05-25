@@ -18,6 +18,22 @@ export class SurveyQuestion extends BaseModel {
   question: string;
 
   @Prop({
+    type: Boolean,
+    required: true,
+    default: true
+  })
+  @Field(type => Boolean)
+  isActive?: boolean;
+
+  @Prop({
+    type: String,
+    enum: ['KUESIONER', 'ESSAY'],
+    default: 'KUESIONER'
+  })
+  @Field(type => String)
+  type?: string;
+
+  @Prop({
     type: schema.Types.ObjectId,
     ref: 'User'
   })

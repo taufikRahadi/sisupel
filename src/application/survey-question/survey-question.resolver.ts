@@ -21,7 +21,9 @@ export class SurveyQuestionResolver {
     @Args('limit', { type: () => Number, defaultValue: 10 }) limit: number
   ) {
     try {
-      return await this.surveyQuestionModel.find().limit(limit).sort({
+      return await this.surveyQuestionModel.find({
+        isActive: true
+      }).limit(limit).sort({
         'createdAt': 'asc'
       })
     } catch (error) {
@@ -34,10 +36,31 @@ export class SurveyQuestionResolver {
   @IsAllowTo('create-question')
   async createQuestion(
     @Args('question', { type: () => String, nullable: false }) question: string,
+    @Args('type', { type: () => String, nullable: false, defaultValue: 'KUESIONER' }) type: 'KUESIONER' | 'ESSAY',
     @Context('user') { _id }: User
   ) {
     try {
-      await this.surveyQuestionModel.create({ question, lastModifiedBy: _id })
+      await this.surveyQuestionModel.create({ question, type ,lastModifiedBy: _id })
+      return true
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
+  @Mutation(returns => Boolean)
+  @UseGuards(UserGuard, PrivilegesGuard)
+  // @IsAllowTo()
+  async changeIsActiveQuestion(
+    @Args('question', { type: () => String, nullable: false }) question: string,
+    @Args('isActive', { type: () => Boolean, nullable: false }) isActive: boolean,
+    @Context('user') { _id }: User
+  ) {
+    try {
+      await this.surveyQuestionModel.findByIdAndUpdate(question, {
+        isActive,
+        lastModifiedBy: _id
+      })
+
       return true
     } catch (error) {
       throw new InternalServerErrorException(error)
