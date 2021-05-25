@@ -48,3 +48,28 @@ export class CalculateAverage {
   @Field(type => Float)
   average: number;
 }
+
+@ObjectType()
+export class CalculateAverageUnitGlobal {
+
+  @Field(type => String, { nullable: true })
+  unitName?: string;
+
+  @Field(type => [AverageType])
+  data: any;
+
+}
+
+@ObjectType()
+export class AverageType {
+
+  @Field(type => Number, { nullable: true })
+  count?: number;
+
+  @Field(type => String, { nullable: true })
+  surveyQuestion?: string;
+
+  @Field(type => Float, { nullable: true })
+  averageAnswer?: number;
+
+}

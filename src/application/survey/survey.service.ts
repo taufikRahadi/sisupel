@@ -2,13 +2,15 @@ import { BadRequestException, Injectable, InternalServerErrorException } from "@
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Survey, SurveyDocument } from "src/model/survey.model";
-import { CalculateAverage, SurveyBody, SurveyBodyPayload } from "./survey.type";
+import { Unit, UnitDocument } from "src/model/unit.model";
+import { CalculateAverage, CalculateAverageUnitGlobal, SurveyBody, SurveyBodyPayload } from "./survey.type";
 
 @Injectable()
 export class SurveyService {
 
   constructor(
-    @InjectModel(Survey.name) private readonly surveyModel: Model<SurveyDocument>
+    @InjectModel(Survey.name) private readonly surveyModel: Model<SurveyDocument>,
+    @InjectModel(Unit.name) private readonly unitModel: Model<UnitDocument>,
   ) {}
 
   async create(survey: Survey): Promise<Survey> {
@@ -79,6 +81,202 @@ export class SurveyService {
     } catch (error) {
       throw new InternalServerErrorException(error)
     }
+  }
+
+  async calculateAverageUnit(user?: any, unit?: any, all: boolean = false) {
+    const findUnit = await this.unitModel.findOne({
+      name: unit
+    });
+
+    const survey = await this.surveyModel.aggregate([
+      {
+        "$lookup": {
+          "from": "users",
+          "localField": "user",
+          "foreignField": "_id",
+          "as": "user"
+        }
+      },
+      {
+        "$unwind": "$user"
+      },
+      {
+        "$match": {
+          "user.unit": findUnit._id
+        }
+      },
+      {
+        "$unwind": "$body",
+      },
+      {
+        "$lookup": {
+          "from": "surveyquestions",
+          "localField": "body.question",
+          "foreignField": "_id",
+          "as": "question"
+        }
+      },
+      {
+        "$lookup": {
+          "from": "surveyanswers",
+          "localField": "body.answer",
+          "foreignField": "_id",
+          "as": "answer"
+        }
+      },
+      {
+        "$unwind": "$question"
+      },
+      {
+        "$unwind": "$answer"
+      },
+      {
+        "$match": {
+          "answer.value": {
+            "$ne": 0
+          }
+        }
+      },
+      {
+        "$group": {
+          "_id": "$question.question",
+          "averageAnswer": {
+            "$avg": "$answer.value"
+          },
+          "count": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "surveyQuestion": "$_id",
+          "averageAnswer": "$averageAnswer",
+          "sum": 1,
+          "count": 1
+        }
+      }
+    ]);
+
+    if (all) {
+      let total_average = 0;
+      survey.forEach((value) => {
+        total_average += value.averageAnswer
+      });
+
+      const result: CalculateAverageUnitGlobal = {
+        unitName: unit,
+        data: [
+          {
+            averageAnswer: total_average / survey.length
+          }
+        ]
+      };
+
+      return result
+    }
+
+    const result: CalculateAverageUnitGlobal = {
+      unitName: unit,
+      data: survey
+    };
+
+    return result
+
+  }
+
+  async calculateAverageGlobal(all: boolean =  false) {
+    
+    const survey = await this.surveyModel.aggregate([
+      {
+        "$lookup": {
+          "from": "users",
+          "localField": "user",
+          "foreignField": "_id",
+          "as": "user"
+        }
+      },
+      {
+        "$unwind": "$user"
+      },
+      {
+        "$unwind": "$body",
+      },
+      {
+        "$lookup": {
+          "from": "surveyquestions",
+          "localField": "body.question",
+          "foreignField": "_id",
+          "as": "question"
+        }
+      },
+      {
+        "$lookup": {
+          "from": "surveyanswers",
+          "localField": "body.answer",
+          "foreignField": "_id",
+          "as": "answer"
+        }
+      },
+      {
+        "$unwind": "$question"
+      },
+      {
+        "$unwind": "$answer"
+      },
+      {
+        "$match": {
+          "answer.value": {
+            "$ne": 0
+          }
+        }
+      },
+      {
+        "$group": {
+          "_id": "$question.question",
+          "averageAnswer": {
+            "$avg": "$answer.value"
+          },
+          "count": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "surveyQuestion": "$_id",
+          "averageAnswer": "$averageAnswer",
+          "sum": 1,
+          "count": 1
+        }
+      }
+    ]);
+
+    if (all) {
+      let total_average = 0;
+      survey.forEach((value) => {
+        total_average += value.averageAnswer
+      });
+
+      const result: CalculateAverageUnitGlobal = {
+        data: [
+          {
+            averageAnswer: total_average / survey.length
+          }
+        ]
+      };
+
+      return result
+    }
+
+    const result: CalculateAverageUnitGlobal = {
+      data: survey
+    };
+
+    return result
+
   }
 
 }
