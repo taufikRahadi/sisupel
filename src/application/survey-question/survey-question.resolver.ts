@@ -24,7 +24,8 @@ export class SurveyQuestionResolver {
       return await this.surveyQuestionModel.find({
         isActive: true
       }).limit(limit).sort({
-        'createdAt': 'asc'
+        'createdAt': 'asc',
+        'type': 'desc'
       })
     } catch (error) {
       throw new InternalServerErrorException(error)
