@@ -55,22 +55,21 @@ export class SurveyService {
       }, {
         path: 'body.question',
         model: 'SurveyQuestion'
-      }]).select(['body'])
+      }]).select(['body']);
 
-      const mapped: SurveyBody[][] = survey.map(s => s.body)
       let total: number[] = []
       const average = survey.map(s => {
         const body: SurveyBody[] = s.body;
-
+        // console.log(body)
         return body;
       }).forEach((survey: any[]) => {
         let surveyTotal = 0
         survey.forEach(s => {
           surveyTotal += s.answer.value;
         })
-        total.push(surveyTotal / survey.length)
+        total.push(surveyTotal / (survey.length - 1))
       })
-
+      
       if (total.length > 0) {
         return {
           totalSurvey: total.length,
