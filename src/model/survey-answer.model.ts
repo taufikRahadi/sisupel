@@ -21,7 +21,7 @@ export class SurveyAnswer extends BaseModel {
   @Prop({
     type: Number,
     max: 5,
-    min: 0,
+    min: 1,
     required: true
   })
   @Field(type => Number)

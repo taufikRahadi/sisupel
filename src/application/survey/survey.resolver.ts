@@ -6,9 +6,8 @@ import { UserGuard } from "src/infrastructure/user.guard";
 import { Survey } from "src/model/survey.model";
 import { User } from "src/model/user.model";
 import { IsAllowTo } from "src/utils/decorators/privileges.decorator";
-import { AuthenticationResolver } from "../authentication/authentication.resolver";
 import { SurveyService } from "./survey.service";
-import { CalculateAverage, CreateSurveyPayload, SurveyResponse, CalculateAverageUnitGlobal, CalculateEssayResponse } from "./survey.type";
+import { CalculateAverage, CreateSurveyPayload, SurveyResponse, CalculateAverageUnitGlobal } from "./survey.type";
 
 @Resolver(of => SurveyResponse)
 export class SurveyResolver {
@@ -44,19 +43,6 @@ export class SurveyResolver {
     @Context('user') { _id }: User
   ) {
     const surveys = await this.surveyService.getMySurvey(_id, limit)
-  }
-
-  @Query(returns => CalculateEssayResponse)
-  @UseGuards(UserGuard, PrivilegesGuard)
-  // @IsAllowTo('calculate-unit-survey')
-  async calculateEssayGlobal() {
-    return await this.surveyService.calculateEssayGlobal()
-  }
-
-  @Query(returns => CalculateEssayResponse)
-  @UseGuards(UserGuard, PrivilegesGuard)
-  async calculateEssayUnit() {
-    
   }
 
   @Query(returns => CalculateAverage)
