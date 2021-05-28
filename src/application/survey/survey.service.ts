@@ -3,7 +3,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Survey, SurveyDocument } from "src/model/survey.model";
 import { Unit, UnitDocument } from "src/model/unit.model";
-import { CalculateAverage, CalculateAverageUnitGlobal, SurveyBody, SurveyBodyPayload } from "./survey.type";
+import { CalculateAverage, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBody, SurveyBodyPayload } from "./survey.type";
 
 @Injectable()
 export class SurveyService {
@@ -19,6 +19,87 @@ export class SurveyService {
     } catch (error) {
       throw new InternalServerErrorException(error)
     }
+  }
+
+  async calculateEssayGlobal(): Promise<CalculateEssayResponse> {
+    try {
+      const today = new Date()
+      const essays = await this.surveyModel.aggregate([
+        {
+          $lookup: {
+            from: 'surveyquestions',
+            let: { 'question': '$_id' },
+            as: 'question',
+            pipeline: [
+              {
+                $match: {
+                  'type': 'ESSAY'
+                }
+              }
+            ]
+          }
+        },
+      ])
+
+      const essayToday = await this.surveyModel.aggregate([
+        {
+          $lookup: {
+            from: 'surveyquestions',
+            let: { 'question': '$_id' },
+            as: 'question',
+            pipeline: [
+              {
+                $match: {
+                  'type': 'ESSAY',
+                }
+              }
+            ]
+          }
+        },
+        {
+          $match: {
+            'createdAt': new Date(new Date(today.getFullYear(), today.getMonth(), today.getDate()))
+          }
+        }
+      ])
+
+      const essayYesterday = await this.surveyModel.aggregate([
+        {
+          $lookup: {
+            from: 'surveyquestions',
+            let: { 'question': '$_id' },
+            as: 'question',
+            pipeline: [
+              {
+                $match: {
+                  'type': 'ESSAY',
+                }
+              }
+            ]
+          }
+        },
+        {
+          $match: {
+            'createdAt': new Date(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1))
+          }
+        }
+      ])
+      console.log(essays.map(val => val.question.length > 0).length)
+      console.log(essayYesterday.map(val => val.question.length > 0).length)
+      console.log(essayToday.map(val => val.question.length > 0).length)
+
+      return {
+        total: essays.map(val => val.question.length > 0).length,
+        todayTotal: essayToday.map(val => val.question.length > 0).length,
+        yesterdayTotal: essayToday.map(val => val.question.length > 0).length
+      }
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
+  async calculateEssayUnit(unitId: string) {
+    
   }
 
   async getMySurvey(user: string, limit: number | undefined) {
@@ -55,22 +136,21 @@ export class SurveyService {
       }, {
         path: 'body.question',
         model: 'SurveyQuestion'
-      }]).select(['body'])
+      }]).select(['body']);
 
-      const mapped: SurveyBody[][] = survey.map(s => s.body)
       let total: number[] = []
       const average = survey.map(s => {
         const body: SurveyBody[] = s.body;
-
+        // console.log(body)
         return body;
       }).forEach((survey: any[]) => {
         let surveyTotal = 0
         survey.forEach(s => {
           surveyTotal += s.answer.value;
         })
-        total.push(surveyTotal / survey.length)
+        total.push(surveyTotal / (survey.length - 1))
       })
-
+      
       if (total.length > 0) {
         return {
           totalSurvey: total.length,
