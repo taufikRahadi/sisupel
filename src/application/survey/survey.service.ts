@@ -216,8 +216,8 @@ export class SurveyService {
       },
       {
         "$match": {
-          "answer.value": {
-            "$ne": 0
+          "question.type": {
+            "$eq": "KUESIONER"
           }
         }
       },
@@ -291,8 +291,8 @@ export class SurveyService {
       },
       {
         "$match": {
-          "answer.value": {
-            "$ne": 0
+          "question.type": {
+            "$eq": "KUESIONER"
           }
         }
       },
@@ -336,12 +336,12 @@ export class SurveyService {
         data: {
           present: [
             {
-              averageAnswer: total_average.present / present_survey.length
+              averageAnswer: present_survey.length != 0 ? total_average.present / present_survey.length : 0
             }
           ],
           yesterday: [
             {
-              averageAnswer: total_average.past / yesterday_survey.length
+              averageAnswer: yesterday_survey.length != 0 ? total_average.past / yesterday_survey.length : 0
             }
           ]
         }
@@ -411,8 +411,8 @@ export class SurveyService {
       },
       {
         "$match": {
-          "answer.value": {
-            "$ne": 0
+          "question.type": {
+            "$eq": "KUESIONER"
           }
         }
       },
@@ -485,8 +485,8 @@ export class SurveyService {
       },
       {
         "$match": {
-          "answer.value": {
-            "$ne": 0
+          "question.type": {
+            "$eq": "KUESIONER"
           }
         }
       },
@@ -529,12 +529,12 @@ export class SurveyService {
         data: {
           present: [
             {
-              averageAnswer: total_average.present / present_survey.length
+              averageAnswer: present_survey.length != 0 ? total_average.present / present_survey.length : 0
             }
           ],
           yesterday: [
             {
-              averageAnswer: total_average.past / yesterday_survey.length
+              averageAnswer: yesterday_survey.length != 0 ? total_average.past / yesterday_survey.length : 0
             }
           ]
         }
