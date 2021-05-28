@@ -8,7 +8,8 @@ import { UserService } from "./user.service";
 import { CreateUserPayload } from "./user.type";
 import { GraphQLUpload } from 'apollo-server-express'
 import { FileUpload } from 'graphql-upload'
-import { createWriteStream } from "fs";
+import { createWriteStream, unlink } from "fs";
+import { join } from "path";
 
 @Resolver(of => User)
 export class UserResolver {
@@ -41,8 +42,13 @@ export class UserResolver {
     )
 
     try {
+      const userPhoto = (await this.userService.findById(_id)).photo
       await upload
       await this.userService.changeProfilePicture(_id, fName)
+
+      unlink(join(process.cwd(), 'public/photo-profile/' + userPhoto), (err) => {
+        if (err) console.log('error deleting file', err)
+      })
       return true
     } catch (error) {
       throw new BadRequestException(error)
