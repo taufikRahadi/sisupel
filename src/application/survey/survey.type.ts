@@ -50,13 +50,24 @@ export class CalculateAverage {
 }
 
 @ObjectType()
+export class TimePrepositionType {
+
+  @Field(type => [AverageType])
+  present: any;
+
+  @Field(type => [AverageType])
+  yesterday: any;
+
+}
+
+@ObjectType()
 export class CalculateAverageUnitGlobal {
 
   @Field(type => String, { nullable: true })
   unitName?: string;
 
-  @Field(type => [AverageType])
-  data: any;
+  @Field(type => TimePrepositionType)
+  data: TimePrepositionType;
 
 }
 
