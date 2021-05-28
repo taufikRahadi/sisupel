@@ -18,10 +18,10 @@ export class SurveyAnswerResolver {
 
   @Query(returns => [SurveyAnswer])
   async getAnswer(
-    // @Args('limit', { type: () => Number, defaultValue: 5 }) limit: number
+    @Args('limit', { type: () => Number, defaultValue: 5 }) limit: number
   ) {
     try {
-      return await this.surveyAnswerModel.find()
+      return await this.surveyAnswerModel.find().limit(limit)
     } catch (error) {
       throw new InternalServerErrorException(error)
     }

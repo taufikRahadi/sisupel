@@ -11,7 +11,7 @@ export class CreateSurveyAnswerPayload {
 
   @Field(type => Number)
   @IsNumber()
-  @Min(0)
+  @Min(1)
   @Max(5)
   value: number;
 
