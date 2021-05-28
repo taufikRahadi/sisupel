@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import { MongooseModule } from '@nestjs/mongoose';
 import { join } from 'path';
+import { Upload } from 'src/utils/types/upload.scalar';
 import { AuthenticationModule } from './authentication/authentication.module';
 import { RoleModule } from './role/role.module';
 import { SurveyAnswerModule } from './survey-answer/survey-answer.module';
@@ -22,7 +23,8 @@ import { UserModule } from './user/user.module';
       debug: false,
       context: ({ req }) => ({ headers: req.headers }),
       playground: true,
-      introspection: true
+      introspection: true,
+      uploads: true
     }),
     MongooseModule.forRootAsync({
       useFactory: (env: ConfigService) => ({
@@ -35,7 +37,7 @@ import { UserModule } from './user/user.module';
       inject: [ConfigService]
     }),
     AuthenticationModule, UserModule, RoleModule, UnitModule, SurveyModule,
-    SurveyAnswerModule, SurveyQuestionModule
+    SurveyAnswerModule, SurveyQuestionModule, Upload
   ],
 })
 export class AppModule {}

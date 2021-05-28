@@ -40,6 +40,13 @@ export class User extends BaseModel {
 
   @Prop({
     type: String,
+    required: false,
+  })
+  @Field(type => String, { nullable: true })
+  photo?: string;
+
+  @Prop({
+    type: String,
     required: true,
     minLength: 8
   })
