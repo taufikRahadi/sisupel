@@ -25,8 +25,11 @@ export class AuthenticationResolver {
     if (!user)
       throw new BadRequestException(`User dengan email '${payload.email}' tidak ditemukan`)
 
-    if (!this.userService.comparePassword(payload.password, user.password))
+    else if (!this.userService.comparePassword(payload.password, user.password))
       throw new BadRequestException('Kata sandi salah')
+
+    else if (!user.isActive)
+      throw new BadRequestException('Akun anda telah dinonaktifkan, silahkan hubungi Administrator untuk mengaktifkan kembali')
 
     const accessTokenExpiration = payload.rememberMe ? Math.floor(Date.now() / 1000) + (60 * 60) * 24 : Math.floor(Date.now() / 1000) + (60 * 60) // default 1 hour, remember me 1 day
     const refreshTokenExpiration = payload.rememberMe ? Math.floor(Date.now() / 1000) + (60 * 60) * 24 * 30 : Math.floor(Date.now() / 1000) + (60 * 60) * 24 // 1 day, remember me 31 day
@@ -41,6 +44,8 @@ export class AuthenticationResolver {
       data: user.email,
       rememberMe: payload.rememberMe
     }, `${this.configService.get<string>('JWT_SECRET')}-refresh`)
+
+    this.userService.updateLastLogin(user._id, new Date()).catch((error) => console.log(error))
 
     return { accessToken, refreshToken }
   }

@@ -49,8 +49,34 @@ export class CreateSurveyPayload {
 }
 
 @ObjectType()
-export class SurveyResponse extends Survey {
-  // @Field(type => )
+export class SurveyResponse {
+
+  @Field(returns => String)
+  _id: string;
+
+  @Field(returns => [SurveyBodyResponse])
+  body: SurveyBodyResponse[];
+
+  user: string;
+
+  @Field(returns => Date, { nullable: true })
+  createdAt: Date;
+
+  @Field(returns => Date, { nullable: true })
+  updatedAt: Date;
+
+}
+
+@ObjectType()
+export class SurveyBodyResponse {
+  @Field(type => SurveyQuestion)
+  question: SurveyQuestion;
+
+  @Field(type => SurveyAnswer)
+  answer: SurveyAnswer;
+
+  @Field(type => String, { nullable: true })
+  text: string;
 }
 
 export class SurveyBody {

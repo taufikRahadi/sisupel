@@ -4,7 +4,7 @@ import { SurveyAnswer, SurveyAnswerModel } from "src/model/survey-answer.model";
 import { SurveyQuestion, SurveyQuestionModel } from "src/model/survey-question.model";
 import { Survey, SurveyModel } from "src/model/survey.model";
 import { AuthenticationModule } from "../authentication/authentication.module";
-import { SurveyResolver } from "./survey.resolver";
+import { SurveyBodyResolver, SurveyResolver } from "./survey.resolver";
 import { SurveyService } from "./survey.service";
 
 @Module({
@@ -26,7 +26,7 @@ import { SurveyService } from "./survey.service";
     ])
   ],
   providers: [
-    SurveyService, SurveyResolver
+    SurveyService, SurveyResolver, SurveyBodyResolver
   ]
 })
 export class SurveyModule {}

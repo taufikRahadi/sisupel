@@ -27,6 +27,22 @@ export class UserService {
     }
   }
 
+  async updateLastLogin(id: string, lastLogin: Date) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const updateUser = await this.userModel.findOneAndUpdate({
+          _id: id
+        }, {
+          lastLogin: lastLogin
+        })
+
+        resolve(updateUser)
+      } catch (error) {
+        reject(error)
+      }
+    })
+  }
+
   async changeProfilePicture(id: string, filename: string) {
     try {
       return await this.userModel.findOneAndUpdate({
