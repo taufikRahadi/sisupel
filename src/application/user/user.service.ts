@@ -27,6 +27,18 @@ export class UserService {
     }
   }
 
+  async changeProfilePicture(id: string, filename: string) {
+    try {
+      return await this.userModel.findOneAndUpdate({
+        _id: id
+      }, {
+        photo: filename
+      })
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
   async findById(id: string) {
     try {
       return await this.userModel.findById(id)
