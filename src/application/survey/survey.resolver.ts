@@ -8,7 +8,7 @@ import { User } from "src/model/user.model";
 import { IsAllowTo } from "src/utils/decorators/privileges.decorator";
 import { AuthenticationResolver } from "../authentication/authentication.resolver";
 import { SurveyService } from "./survey.service";
-import { CalculateAverage, CreateSurveyPayload, SurveyResponse, CalculateAverageUnitGlobal, CalculateEssayResponse } from "./survey.type";
+import { CalculateAverage, CreateSurveyPayload, SurveyResponse, CalculateAverageUnitGlobal, CalculateEssayResponse, SortByEnum, AverageType } from "./survey.type";
 
 @Resolver(of => SurveyResponse)
 export class SurveyResolver {
@@ -92,6 +92,21 @@ export class SurveyResolver {
   ) {
     try {
       return this.surveyService.calculateAverageGlobal(all);
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  @Query(returns => AverageType)
+  @UseGuards(UserGuard, PrivilegesGuard)
+  @IsAllowTo('calculate-global-survey')
+  async getBestFrontDeskScores(
+    @Args('sortBy', { type: () => SortByEnum, defaultValue: 0 }) sortBy: SortByEnum,
+  ) {
+    try {
+      const data: AverageType = await this.surveyService.getBestFrontDeskScores(sortBy);
+    
+      return data
     } catch (error) {
       throw new InternalServerErrorException(error);
     }
