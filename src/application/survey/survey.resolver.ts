@@ -14,7 +14,7 @@ import { Sort } from "src/utils/types/sort.enum";
 import { AuthenticationResolver } from "../authentication/authentication.resolver";
 import { UserService } from "../user/user.service";
 import { SurveyService } from "./survey.service";
-import { CalculateAverage, CreateSurveyPayload, SurveyResponse, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBodyResponse } from "./survey.type";
+import { CalculateAverage, CreateSurveyPayload, SurveyResponse, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBodyResponse, AverageType, SortByEnum } from "./survey.type";
 
 @Resolver(of => SurveyResponse)
 export class SurveyResolver {
@@ -112,6 +112,21 @@ export class SurveyResolver {
     return await this.userService.findById(user)
   }
 
+  @Query(returns => AverageType)
+  @UseGuards(UserGuard, PrivilegesGuard)
+  @IsAllowTo('calculate-global-survey')
+  async getBestFrontDeskScores(
+    @Args('sortBy', { type: () => SortByEnum, defaultValue: 0 }) sortBy: SortByEnum,
+  ) {
+    try {
+      const data: AverageType = await this.surveyService.getBestFrontDeskScores(sortBy);
+    
+      return data
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
 }
 
 @Resolver(of => SurveyBodyResponse)
@@ -131,5 +146,4 @@ export class SurveyBodyResolver {
   async getAnswer(@Parent() { answer }: SurveyBodyResponse) {
     return await this.answerModel.findById(answer)
   }
-
 }

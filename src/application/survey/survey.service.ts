@@ -544,4 +544,136 @@ export class SurveyService {
 
   }
 
+  async getBestFrontDeskScores(sortBy: number) {
+    try {
+      const sort = sortBy == 0 ? -1 : sortBy;
+    
+      const current_month_data = await this.surveyModel.aggregate([
+        {
+          "$lookup": {
+            "from": "users",
+            "let": {
+              "user": "$_id"
+            },
+            "pipeline": [
+              {
+                "$project": {
+                  "_id": 0,
+                  "password": 0
+                }
+              }
+            ],
+            "as": "user"
+          }
+        },
+        {
+          "$lookup": {
+            "from": "units",
+            "localField": "user.unit",
+            "foreignField": "_id",
+            "as": "unit"
+          }
+        },
+        {
+          "$match": {
+            "$expr": {
+              "$eq": [{ "$month": "$createdAt" },new Date().getMonth()+1]
+            }
+          }
+        },
+        {
+          "$unwind": "$user"
+        },
+        {
+          "$unwind": "$unit"
+        },
+        {
+          "$lookup": {
+            "from": "roles",
+            "localField": "user.role",
+            "foreignField": "_id",
+            "as": "role"
+          }
+        },
+        {
+          "$unwind": "$role"
+        },
+        {
+          "$match": {
+            "role.name": "FRONT DESK"
+          }
+        },
+        {
+          "$unwind": "$body",
+        },
+        {
+          "$lookup": {
+            "from": "surveyquestions",
+            "localField": "body.question",
+            "foreignField": "_id",
+            "as": "question"
+          }
+        },
+        {
+          "$lookup": {
+            "from": "surveyanswers",
+            "localField": "body.answer",
+            "foreignField": "_id",
+            "as": "answer"
+          }
+        },
+        {
+          "$unwind": "$answer"
+        },
+        {
+          "$match": {
+            "question.type": {
+              "$eq": "KUESIONER"
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": "$user",
+            "averageAnswer": {
+              "$avg": "$answer.value"
+            },
+            "unit": {
+              "$first": "$unit"
+            },
+            "count": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$sort": {
+            "averageAnswer": sort
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "user": {
+              "fullname": "$_id.fullname",
+              "unit": {
+                "name": "$unit.name",
+              },
+              "email": "$_id.email"
+            },
+            "averageAnswer": "$averageAnswer",
+            "count": 1,
+          }
+        },
+        {
+          "$limit": 1,
+        },
+      ]);
+
+      return current_month_data[0];
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
 }

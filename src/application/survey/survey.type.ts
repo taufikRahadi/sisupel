@@ -1,4 +1,4 @@
-import { ArgsType, Field, Float, InputType, ObjectType } from "@nestjs/graphql";
+import { ArgsType, Field, Float, InputType, ObjectType, registerEnumType } from "@nestjs/graphql";
 import { Type } from "class-transformer";
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsNotEmpty, IsOptional, IsString, Max, MaxLength, ValidateNested } from "class-validator";
 import { SurveyAnswer } from "src/model/survey-answer.model";
@@ -128,4 +128,16 @@ export class AverageType {
   @Field(type => Float, { nullable: true })
   averageAnswer?: number;
 
+  @Field(type => User, { nullable: true })
+  user?: any;
+
 }
+
+export enum SortByEnum {
+  DESC,
+  ASC
+}
+
+registerEnumType(SortByEnum, {
+  name: 'SortByEnum'
+});
