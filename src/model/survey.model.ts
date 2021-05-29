@@ -14,7 +14,8 @@ export class Survey extends BaseModel {
   @Prop({
     type: [{
       question: schema.Types.ObjectId,
-      answer: schema.Types.ObjectId
+      answer: schema.Types.ObjectId,
+      text: String
     }]
   })
   body: any[];

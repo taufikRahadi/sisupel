@@ -3,6 +3,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Survey, SurveyDocument } from "src/model/survey.model";
 import { Unit, UnitDocument } from "src/model/unit.model";
+import { DateRange } from "src/utils/types/date-range.type";
 import { CalculateAverage, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBody, SurveyBodyPayload } from "./survey.type";
 
 @Injectable()
@@ -84,14 +85,10 @@ export class SurveyService {
           }
         }
       ])
-      console.log(essays.map(val => val.question.length > 0).length)
-      console.log(essayYesterday.map(val => val.question.length > 0).length)
-      console.log(essayToday.map(val => val.question.length > 0).length)
-
       return {
         total: essays.map(val => val.question.length > 0).length,
         todayTotal: essayToday.map(val => val.question.length > 0).length,
-        yesterdayTotal: essayToday.map(val => val.question.length > 0).length
+        yesterdayTotal: essayYesterday.map(val => val.question.length > 0).length
       }
     } catch (error) {
       throw new InternalServerErrorException(error)
@@ -102,24 +99,17 @@ export class SurveyService {
     
   }
 
-  async getMySurvey(user: string, limit: number | undefined) {
+  async getMySurvey(user: string, sort: 'asc' | 'desc' | string = 'asc', limit: number | undefined, range: DateRange) {
     try {
       const surveys = await this.surveyModel
         .find({
-          user
-        }).populate([
-          {
-            path: 'answer',
-            model: 'SurveyAnswer'
-          },
-          {
-            path: 'question',
-            model: 'SurveyQuestion'
-          }
-        ])
-        .sort({ 'createdAt': 'asc' })
+          $and: [
+            { "user": user },
+            { createdAt: { $gte: String(range.from), $lte: String(range.to) } }
+          ] 
+        })
+        .sort({ 'createdAt': sort })
         .limit(limit)
-
       return surveys
     } catch (error) {
       throw new InternalServerErrorException(error)

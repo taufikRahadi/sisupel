@@ -53,6 +53,20 @@ export class User extends BaseModel {
   password: string;
 
   @Prop({
+    type: Boolean,
+    default: true
+  })
+  @Field(type => Boolean, { nullable: false })
+  isActive?: boolean;
+
+  @Prop({
+    type: Date,
+    required: false,
+  })
+  @Field(type => Date, { nullable: true })
+  lastLogin?: Date;
+
+  @Prop({
     type: schema.Types.ObjectId,
     ref: 'Role'
   })

@@ -10,11 +10,17 @@ import { GraphQLUpload } from 'apollo-server-express'
 import { FileUpload } from 'graphql-upload'
 import { createWriteStream, unlink } from "fs";
 import { join } from "path";
+import { Unit, UnitDocument } from "src/model/unit.model";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
 
 @Resolver(of => User)
 export class UserResolver {
 
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    @InjectModel(Unit.name) private readonly unitModel: Model<UnitDocument>
+  ) {}
 
   @UseGuards(UserGuard, PrivilegesGuard)
   @Query(returns => User)
@@ -63,6 +69,11 @@ export class UserResolver {
   ) {
     await this.userService.create(payload);
     return true;
+  }
+
+  @ResolveField('unit', returns => Unit)
+  async getUnit(@Parent() { unit }: User) {
+    return await this.unitModel.findById(unit)
   }
 
   @ResolveField('photo', returns => String)
