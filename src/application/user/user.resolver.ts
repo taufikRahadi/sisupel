@@ -1,4 +1,4 @@
-import { BadRequestException, UseGuards } from "@nestjs/common";
+import { BadRequestException, InternalServerErrorException, UseGuards } from "@nestjs/common";
 import { Args, Context, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/graphql";
 import { PrivilegesGuard } from "src/infrastructure/privileges.guard";
 import { UserGuard } from "src/infrastructure/user.guard";
@@ -28,6 +28,24 @@ export class UserResolver {
     @Context('user') user: User
   ) {
     return user
+  }
+
+  @Mutation(returns => Boolean)
+  @UseGuards(UserGuard)
+  async resetProfilePhoto(
+    @Context('user') { _id }: User
+  ) {
+    try {
+      const userPhoto = (await this.userService.findById(_id)).photo
+      await this.userService.changeProfilePicture(_id, '')
+
+      unlink(join(process.cwd(), 'public/photo-profile/' + userPhoto), (err) => {
+        if (err) console.log('error deleting file', err)
+      })
+      return true
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
   }
 
   @UseGuards(UserGuard, PrivilegesGuard)
@@ -80,7 +98,8 @@ export class UserResolver {
   async getPhoto(
     @Parent() { photo }: User
   ) {
-    return `/photo-profile/${photo}`
+    if (photo.length > 1) return `/photo-profile/${photo}`
+    return photo
   }
 
 }
