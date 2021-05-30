@@ -45,7 +45,7 @@ export class SurveyResolver {
 
   @Query(returns => [SurveyResponse])
   @UseGuards(UserGuard, PrivilegesGuard)
-  // @IsAllowTo('read-self-survey')
+  @IsAllowTo('read-self-survey')
   async getMySurvey(
     @Args('limit', { type: () => Number, nullable: true }) limit: number,
     @Context('user') { _id, unit }: User,
@@ -58,6 +58,28 @@ export class SurveyResolver {
 
   @Query(returns => [SurveyResponse])
   @UseGuards(UserGuard, PrivilegesGuard)
+  @IsAllowTo('calculate-unit-survey')
+  async getMyUnitSurveys(
+    @Args('limit', { type: () => Number, nullable: true }) limit: number,
+    @Context('user') { _id, unit }: User,
+    @Args('range', { type: () => DateRange, nullable: false }) range: DateRange,
+    @Args('sort', { type: () => Sort, defaultValue: Sort['asc'] }) sort: Sort
+  ) {
+    const from = new Date(range.from)
+    const to = new Date(range.to)
+    range = {
+      from: from,
+      to: new Date(to.setDate(to.getDate() + 1)) 
+    }
+
+    const userUnit: any = unit
+
+    return await this.surveyService.getSurveys(Sort[sort], limit, range, userUnit._id)
+  }
+
+  @Query(returns => [SurveyResponse])
+  @UseGuards(UserGuard, PrivilegesGuard)
+  @IsAllowTo('read-global-survey')
   async getSurveys(
     @Context('user') user: User,
     @Args('limit', { type: () => Number, nullable: true, defaultValue: 10 }) limit: number,
