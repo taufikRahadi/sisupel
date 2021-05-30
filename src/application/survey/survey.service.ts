@@ -4,8 +4,11 @@ import { Model } from "mongoose";
 import { Survey, SurveyDocument } from "src/model/survey.model";
 import { Unit, UnitDocument } from "src/model/unit.model";
 import { DateRange } from "src/utils/types/date-range.type";
+import { Types } from 'mongoose'
 import { CalculateAverage, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBody, SurveyBodyPayload } from "./survey.type";
 
+const ObjectId = Types.ObjectId
+// const ISODate = Types.Is
 @Injectable()
 export class SurveyService {
 
@@ -97,6 +100,72 @@ export class SurveyService {
 
   async calculateEssayUnit(unitId: string) {
     
+  }
+
+  async getSurveys(
+    sort: string, limit: number, range: DateRange, unit?: string,
+  ) {
+    let pipeline: any[] = [];
+    if (unit) {
+      pipeline = [
+        {
+          $match: {
+            unit: ObjectId(unit)
+          }
+        },
+        {
+          $lookup: {
+            from: 'units',
+            localField: 'unit',
+            foreignField: '_id',
+            as: 'unit'
+          }
+        },
+        {
+          $unwind: '$unit'
+        }
+      ]
+    } else {
+      pipeline = [
+        {
+          $lookup: {
+            from: 'units',
+            localField: 'unit',
+            foreignField: '_id',
+            as: 'unit'
+          }
+        },
+        {
+          $unwind: '$unit'
+        },
+      ]
+    }
+
+    try {
+      const surveys = await this.surveyModel.aggregate([
+        {
+          $lookup: {
+            from: 'users',
+            let: { 'user': '$_id' },
+            as: 'user',
+            pipeline
+          }
+        },
+        {
+          $unwind: '$user'
+        },
+        {
+          $match: { createdAt: { $gte: range.from, $lte: range.to } }
+        },
+      ])
+      .sort({ createdAt: sort })
+
+      console.log(surveys)
+
+      return surveys
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
   }
 
   async getMySurvey(user: string, sort: 'asc' | 'desc' | string = 'asc', limit: number | undefined, range: DateRange) {

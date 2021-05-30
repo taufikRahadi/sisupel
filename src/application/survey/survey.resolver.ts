@@ -56,6 +56,24 @@ export class SurveyResolver {
     return surveys
   }
 
+  @Query(returns => [SurveyResponse])
+  @UseGuards(UserGuard, PrivilegesGuard)
+  async getSurveys(
+    @Context('user') user: User,
+    @Args('limit', { type: () => Number, nullable: true, defaultValue: 10 }) limit: number,
+    @Args('range', { type: () => DateRange, nullable: false }) range: DateRange,
+    @Args('sort', { type: () => Sort, defaultValue: Sort['asc'] }) sort: Sort,
+    @Args('unit', { type: () => String, nullable: true }) unit: string
+  ) {
+    const from = new Date(range.from)
+    const to = new Date(range.to)
+    range = {
+      from: from,
+      to: new Date(to.setDate(to.getDate() + 1)) 
+    }
+    return await this.surveyService.getSurveys(Sort[sort], limit, range, unit)
+  }
+
   @Query(returns => CalculateEssayResponse)
   @UseGuards(UserGuard, PrivilegesGuard)
   // @IsAllowTo('calculate-unit-survey')
