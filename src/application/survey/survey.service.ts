@@ -25,6 +25,87 @@ export class SurveyService {
     }
   }
 
+  async calculateEssayUnit(unitId: string) {
+    try {
+      const today = new Date()
+      const essays = await this.surveyModel.aggregate([
+        {
+          $lookup: {
+            from: 'surveyquestions',
+            let: { 'question': '$_id' },
+            as: 'question',
+            pipeline: [
+              {
+                $match: {
+                  'type': 'ESSAY'
+                }
+              }
+            ]
+          }
+        },
+        {
+          $unwind: "$user"
+        }
+      ])
+
+      const essayToday = await this.surveyModel.aggregate([
+        {
+          $lookup: {
+            from: 'surveyquestions',
+            let: { 'question': '$_id' },
+            as: 'question',
+            pipeline: [
+              {
+                $match: {
+                  'type': 'ESSAY'
+                }
+              }
+            ]
+          }
+        },
+        {
+          $match: {
+            $expr: {
+              $eq: [{'$dayOfMonth': '$createdAt'}, today.getDate()]
+            }
+          }
+        }
+      ])
+
+      const essayYesterday = await this.surveyModel.aggregate([
+        {
+          $lookup: {
+            from: 'surveyquestions',
+            let: { 'question': '$_id' },
+            as: 'question',
+            pipeline: [
+              {
+                $match: {
+                  'type': 'ESSAY'
+                }
+              }
+            ]
+          }
+        },
+        {
+          $match: {
+            $expr: {
+              $eq: [{'$dayOfMonth': '$createdAt'}, today.getDate()]
+            }
+          }
+        }
+      ])
+
+      return {
+        total: essays.map(val => val.question.length > 0).length,
+        todayTotal: essayToday.map(val => val.question.length > 0).length,
+        yesterdayTotal: essayYesterday.map(val => val.question.length > 0).length
+      }
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
   async calculateEssayGlobal(): Promise<CalculateEssayResponse> {
     try {
       const today = new Date()
@@ -96,10 +177,6 @@ export class SurveyService {
     } catch (error) {
       throw new InternalServerErrorException(error)
     }
-  }
-
-  async calculateEssayUnit(unitId: string) {
-    
   }
 
   async getSurveys(
@@ -611,6 +688,122 @@ export class SurveyService {
 
     return result
 
+  }
+
+  async getBestUnit(limit: number, sort: number = 0) {
+    try {
+      sort = sort == 0 ? 1 : -1
+
+      const surveys = await this.surveyModel.aggregate(
+        [{
+          $lookup: {
+              from: 'users',
+              let: {
+                  "user": "$_id"
+              },
+              as: "user",
+              pipeline: [{
+                  $project: {
+                      "_id": 0,
+                      "password": 0
+                  }
+              }]
+          }
+      }, {
+          $unwind: {
+              path: "$user",
+          }
+      }, {
+          $lookup: {
+              from: 'units',
+              localField: 'user.unit',
+              foreignField: '_id',
+              as: 'unit'
+          }
+      }, {
+          $unwind: {
+              path: "$unit",
+          }
+      }, {
+          $match: {
+              "$expr": {
+                  "$eq": [{
+                      "$month": "$createdAt"
+                  }, new Date().getMonth() + 1]
+              }
+          }
+      }, {
+          $lookup: {
+              "from": "roles",
+              "localField": "user.role",
+              "foreignField": "_id",
+              "as": "role"
+          }
+      }, {
+          $unwind: {
+              path: "$role",
+          }
+      }, {
+          $match: {
+              "role.name": "FRONT DESK"
+          }
+      }, {
+          $unwind: {
+              path: "$body"
+          }
+      }, {
+          $lookup: {
+              "from": "surveyquestions",
+              "localField": "body.question",
+              "foreignField": "_id",
+              "as": "question"
+          }
+      }, {
+          $lookup: {
+              "from": "surveyanswers",
+              "localField": "body.answer",
+              "foreignField": "_id",
+              "as": "answer"
+          }
+      }, {
+          $unwind: {
+              path: "$answer",
+          }
+      }, {
+          $group: {
+              "_id": "$user",
+              "averageAnswer": {
+                  "$avg": "$answer.value"
+              },
+              "unit": {
+                  "$first": "$unit"
+              },
+              "count": {
+                  "$sum": 1
+              }
+          }
+      }, {
+        $sort: {
+          "averageAnswer": sort
+        }
+      }, {
+          $project: {
+              "_id": 0,
+              "unit": {
+                  "name": "$unit.name",
+              },
+              "averageAnswer": "$averageAnswer",
+              "count": 1,
+          }
+      }, {
+          $limit: limit
+      }]
+      )
+
+      return surveys
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
   }
 
   async getBestFrontDeskScores(sortBy: number) {

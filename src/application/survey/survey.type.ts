@@ -4,6 +4,7 @@ import { ArrayMaxSize, ArrayMinSize, IsArray, IsNotEmpty, IsOptional, IsString, 
 import { SurveyAnswer } from "src/model/survey-answer.model";
 import { SurveyQuestion } from "src/model/survey-question.model";
 import { Survey } from "src/model/survey.model";
+import { Unit } from "src/model/unit.model";
 import { User } from "src/model/user.model";
 
 @InputType()
@@ -130,6 +131,26 @@ export class AverageType {
 
   @Field(type => User, { nullable: true })
   user?: any;
+
+}
+
+@ObjectType()
+export class UnitType {
+  @Field(type => String)
+  name: string;
+}
+
+@ObjectType()
+export class AverageTypeUnit {
+
+  @Field(type => Number, { nullable: true })
+  count?: number;
+
+  @Field(type => Float, { nullable: true })
+  averageAnswer?: number;
+
+  @Field(type => UnitType, { nullable: true })
+  unit?: any;
 
 }
 

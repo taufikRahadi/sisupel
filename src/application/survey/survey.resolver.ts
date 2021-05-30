@@ -1,6 +1,7 @@
 import { InternalServerErrorException, UseGuards } from "@nestjs/common";
 import { Args, Context, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/graphql";
 import { InjectModel } from "@nestjs/mongoose";
+import { SSL_OP_CRYPTOPRO_TLSEXT_BUG } from "constants";
 import { Model } from "mongoose";
 import { PrivilegesGuard } from "src/infrastructure/privileges.guard";
 import { UserGuard } from "src/infrastructure/user.guard";
@@ -14,7 +15,7 @@ import { Sort } from "src/utils/types/sort.enum";
 import { AuthenticationResolver } from "../authentication/authentication.resolver";
 import { UserService } from "../user/user.service";
 import { SurveyService } from "./survey.service";
-import { CalculateAverage, CreateSurveyPayload, SurveyResponse, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBodyResponse, AverageType, SortByEnum } from "./survey.type";
+import { CalculateAverage, CreateSurveyPayload, SurveyResponse, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBodyResponse, AverageType, SortByEnum, AverageTypeUnit } from "./survey.type";
 
 @Resolver(of => SurveyResponse)
 export class SurveyResolver {
@@ -105,8 +106,12 @@ export class SurveyResolver {
 
   @Query(returns => CalculateEssayResponse)
   @UseGuards(UserGuard, PrivilegesGuard)
-  async calculateEssayUnit() {
-    
+  async calculateEssayUnit(
+    @Context('user') { unit }: User
+  ) {
+    // return await this.surveyService
+    const unitId: any = unit
+    return await this.surveyService.calculateEssayUnit(unitId._id)
   }
 
   @Query(returns => CalculateAverage)
@@ -165,6 +170,15 @@ export class SurveyResolver {
     } catch (error) {
       throw new InternalServerErrorException(error);
     }
+  }
+
+  @Query(returns => [AverageTypeUnit])
+  @UseGuards(UserGuard)
+  async getBestUnit(
+    @Args('sort', { type: () => Sort, defaultValue: 0 }) sort: Sort,
+    @Args('limit', { type: () => Number, defaultValue: 5 }) limit: number
+  ) {
+    return await this.surveyService.getBestUnit(limit, sort)
   }
 
 }
