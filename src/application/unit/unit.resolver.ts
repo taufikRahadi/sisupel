@@ -1,5 +1,5 @@
 import { InternalServerErrorException } from "@nestjs/common";
-import { Args, Mutation, Resolver } from "@nestjs/graphql";
+import { Args, Mutation, Query, Resolver } from "@nestjs/graphql";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Unit, UnitDocument } from "src/model/unit.model";
