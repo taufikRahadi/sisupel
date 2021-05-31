@@ -690,12 +690,21 @@ export class SurveyService {
 
   }
 
-  async getBestUnit(limit: number, sort: number = 0) {
+  async getBestUnit(limit: number, sort: number = 0, range: DateRange) {
+    console.log({$gte: new Date(range.from),
+                $lte: new Date(range.from.setDate(range.from.getDate() + 1))})
     try {
       sort = sort == 0 ? 1 : -1
 
       const surveys = await this.surveyModel.aggregate(
-        [{
+        [ {
+          $match: {
+              "createdAt": {
+                $gte: new Date(range.from),
+                $lte: new Date(range.to.setDate(range.to.getDate() + 1))
+              }
+          }
+        }, {
           $lookup: {
               from: 'users',
               let: {
@@ -723,14 +732,6 @@ export class SurveyService {
       }, {
           $unwind: {
               path: "$unit",
-          }
-      }, {
-          $match: {
-              "$expr": {
-                  "$eq": [{
-                      "$month": "$createdAt"
-                  }, new Date().getMonth() + 1]
-              }
           }
       }, {
           $lookup: {

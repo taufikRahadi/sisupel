@@ -8,6 +8,7 @@ import { UserGuard } from "src/infrastructure/user.guard";
 import { SurveyAnswer, SurveyAnswerDocument } from "src/model/survey-answer.model";
 import { SurveyQuestion, SurveyQuestionDocument, SurveyQuestionModel } from "src/model/survey-question.model";
 import { Survey } from "src/model/survey.model";
+import { Unit } from "src/model/unit.model";
 import { User } from "src/model/user.model";
 import { IsAllowTo } from "src/utils/decorators/privileges.decorator";
 import { DateRange } from "src/utils/types/date-range.type";
@@ -16,6 +17,8 @@ import { AuthenticationResolver } from "../authentication/authentication.resolve
 import { UserService } from "../user/user.service";
 import { SurveyService } from "./survey.service";
 import { CalculateAverage, CreateSurveyPayload, SurveyResponse, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBodyResponse, AverageType, SortByEnum, AverageTypeUnit } from "./survey.type";
+
+const today = new Date()
 
 @Resolver(of => SurveyResponse)
 export class SurveyResolver {
@@ -176,9 +179,10 @@ export class SurveyResolver {
   @UseGuards(UserGuard)
   async getBestUnit(
     @Args('sort', { type: () => Sort, defaultValue: 0 }) sort: Sort,
-    @Args('limit', { type: () => Number, defaultValue: 5 }) limit: number
+    @Args('limit', { type: () => Number, defaultValue: 5 }) limit: number,
+    @Args('range', { type: () => DateRange, defaultValue: { from: new Date(today.setMonth(today.getMonth()) - 1), to: today } }) range: DateRange
   ) {
-    return await this.surveyService.getBestUnit(limit, sort)
+    return await this.surveyService.getBestUnit(limit, sort, range)
   }
 
 }
