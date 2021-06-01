@@ -309,8 +309,8 @@ export class SurveyService {
             $match: {
               unit: ObjectId(unit),
               createdAt: {
-                $gt: range.from,
-                $lt: range.to
+                $gte: new Date(range.from),
+                $lte: new Date(range.to)
               }
             }
           }
