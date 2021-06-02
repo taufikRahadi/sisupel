@@ -1,5 +1,5 @@
 import { ArgsType, Field } from "@nestjs/graphql";
-import { IsEmail, IsNotEmpty, IsString, MinLength } from "class-validator";
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from "class-validator";
 import { Match } from "src/utils/decorators/match.decorator";
 
 @ArgsType()
@@ -36,5 +36,16 @@ export class CreateUserPayload {
   @Match('password')
   @Field(type => String)
   passwordConfirmation: string;
+
+}
+
+@ArgsType()
+export class UpdateMyProfile {
+
+   @Field(type => String, { nullable: true })
+   @IsString()
+   @IsOptional()
+   @MinLength(3)
+   fullname: string;
 
 }

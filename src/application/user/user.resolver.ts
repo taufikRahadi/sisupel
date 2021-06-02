@@ -5,7 +5,7 @@ import { UserGuard } from "src/infrastructure/user.guard";
 import { User } from "src/model/user.model";
 import { IsAllowTo } from "src/utils/decorators/privileges.decorator";
 import { UserService } from "./user.service";
-import { CreateUserPayload } from "./user.type";
+import { CreateUserPayload, UpdateMyProfile } from "./user.type";
 import { GraphQLUpload } from 'apollo-server-express'
 import { FileUpload } from 'graphql-upload'
 import { createWriteStream, unlink } from "fs";
@@ -30,6 +30,27 @@ export class UserResolver {
     return user
   }
 
+  @UseGuards(UserGuard)
+  @Mutation(returns => User)
+  async updateMyProfile(
+    @Context('user') { _id, photo }: User,
+    @Args() { fullname }: UpdateMyProfile,
+    @Args('picture', { name: 'picture', type: () => GraphQLUpload, nullable: true }) picture: FileUpload
+  ) {
+    let fName: string;
+    if (picture) {
+      fName = await this.uploadPhoto(picture)
+      this.removeFile(photo)
+    }
+ 
+    const updateUser = await this.userService.updateUser(_id, {
+      fullname,
+      photo: fName
+    })
+
+    return await this.userService.findById(_id)
+  }
+
   @Mutation(returns => Boolean)
   @UseGuards(UserGuard)
   async resetProfilePhoto(
@@ -48,31 +69,39 @@ export class UserResolver {
     }
   }
 
-  @UseGuards(UserGuard, PrivilegesGuard)
-  @Mutation(returns => Boolean)
-  async changeProfilePhoto(
-    @Context('user') { _id }: User,
-    @Args('picture', { name: 'picture', type: () => GraphQLUpload, nullable: false }) { createReadStream, filename, mimetype }: FileUpload
-  ) {
+  private uploadPhoto({ createReadStream, encoding, filename, mimetype }: FileUpload): Promise<string> {
     const fName = `${Date.now()}-profile.${mimetype.split('/')[1]}`
-    const upload = new Promise((resolve, reject) => createReadStream()
+    const upload: Promise<string> = new Promise((resolve, reject) => createReadStream()
       .pipe(createWriteStream('public/photo-profile/' + fName))
       .on('finish', async () => {
-        resolve(true)        
+        resolve(fName)        
       })
       .on('error', (err) => {
         reject(err)
       })
     )
 
+    return upload
+  }
+
+  private removeFile(userPhoto: string) {
+    unlink(join(process.cwd(), 'public/photo-profile/' + userPhoto), (err) => {
+      if (err) console.log('error deleting file', err)
+    })
+  }
+
+  @UseGuards(UserGuard, PrivilegesGuard)
+  @Mutation(returns => Boolean)
+  async changeProfilePhoto(
+    @Context('user') { _id }: User,
+    @Args('picture', { name: 'picture', type: () => GraphQLUpload, nullable: false }) picture: FileUpload
+  ) {
     try {
       const userPhoto = (await this.userService.findById(_id)).photo
-      await upload
+      const fName = await this.uploadPhoto(picture)
       await this.userService.changeProfilePicture(_id, fName)
 
-      unlink(join(process.cwd(), 'public/photo-profile/' + userPhoto), (err) => {
-        if (err) console.log('error deleting file', err)
-      })
+      this.removeFile(userPhoto)
       return true
     } catch (error) {
       throw new BadRequestException(error)

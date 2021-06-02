@@ -43,6 +43,19 @@ export class UserService {
     })
   }
 
+  async updateUser(id: string, payload: any) {
+    try {
+      const user = await this.userModel.findOneAndUpdate({ _id: id}, {
+        ...payload
+      })
+
+      return user
+    } catch (error) {
+      console.log(error)
+      throw new InternalServerErrorException(error)
+    }
+  }
+
   async changeProfilePicture(id: string, filename: string) {
     try {
       return await this.userModel.findOneAndUpdate({
