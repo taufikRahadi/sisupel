@@ -807,129 +807,127 @@ export class SurveyService {
     }
   }
 
-  async getBestFrontDeskScores(sortBy: number) {
+  async getBestFrontDeskScores() {
     try {
-      const sort = sortBy == 0 ? -1 : sortBy;
+      // const sort = sortBy == 0 ? -1 : sortBy;
     
       const current_month_data = await this.surveyModel.aggregate([
         {
-          "$lookup": {
-            "from": "users",
-            "let": {
-              "user": "$_id"
+          $lookup: {
+            from: "users",
+            let: {
+              user: "$_id"
             },
-            "pipeline": [
+            pipeline: [
               {
-                "$project": {
-                  "_id": 0,
-                  "password": 0
+                $project: {
+                  _id: 0,
+                  password: 0
                 }
               }
             ],
-            "as": "user"
+            as: "user"
           }
         },
         {
-          "$lookup": {
-            "from": "units",
-            "localField": "user.unit",
-            "foreignField": "_id",
-            "as": "unit"
+          $lookup: {
+            from: "units",
+            localField: "user.unit",
+            foreignField: "_id",
+            as: "unit"
           }
         },
         {
-          "$match": {
-            "$expr": {
-              "$eq": [{ "$month": "$createdAt" },new Date().getMonth()+1]
+          $match: {
+            $expr: {
+              $eq: [{ $month: "$createdAt" },new Date().getMonth()+1]
             }
           }
         },
         {
-          "$unwind": "$user"
+          $unwind: "$user"
         },
         {
-          "$unwind": "$unit"
+          $unwind: "$unit"
         },
         {
-          "$lookup": {
-            "from": "roles",
-            "localField": "user.role",
-            "foreignField": "_id",
-            "as": "role"
+          $lookup: {
+            from: "roles",
+            localField: "user.role",
+            foreignField: "_id",
+            as: "role"
           }
         },
         {
-          "$unwind": "$role"
+          $unwind: "$role"
         },
         {
-          "$match": {
+          $match: {
             "role.name": "FRONT DESK"
           }
         },
         {
-          "$unwind": "$body",
+          $unwind: "$body",
         },
         {
-          "$lookup": {
-            "from": "surveyquestions",
-            "localField": "body.question",
-            "foreignField": "_id",
-            "as": "question"
+          $lookup: {
+            from: "surveyquestions",
+            localField: "body.question",
+            foreignField: "_id",
+            as: "question"
           }
         },
         {
-          "$lookup": {
-            "from": "surveyanswers",
-            "localField": "body.answer",
-            "foreignField": "_id",
-            "as": "answer"
+          $lookup: {
+            from: "surveyanswers",
+            localField: "body.answer",
+            foreignField: "_id",
+            as: "answer"
           }
         },
         {
-          "$unwind": "$answer"
+          $unwind: "$answer"
         },
         {
-          "$match": {
+          $match: {
             "question.type": {
-              "$eq": "KUESIONER"
+              $eq: "KUESIONER"
             }
           }
         },
         {
-          "$group": {
-            "_id": "$user",
-            "averageAnswer": {
+          $group: {
+            _id: "$user",
+            averageAnswer: {
               "$avg": "$answer.value"
             },
-            "unit": {
-              "$first": "$unit"
+            unit: {
+              $first: "$unit"
             },
-            "count": {
-              "$sum": 1
+            count: {
+              $sum: 1
             }
           }
         },
+        // {
+        //   $sort: {
+        //     averageAnswer: sort
+        //   }
+        // },
         {
-          "$sort": {
-            "averageAnswer": sort
-          }
-        },
-        {
-          "$project": {
-            "_id": 0,
-            "user": {
-              "fullname": "$_id.fullname",
-              "unit": {
-                "name": "$unit.name",
-              },
-              "email": "$_id.email"
+          $project: {
+            _id: 0,
+            user: {
+              fullname: "$_id.fullname",
+              unit: "$unit",
+              email: "$_id.email"
             },
-            "averageAnswer": "$averageAnswer",
-            "count": 1,
+            averageAnswer: "$averageAnswer",
+            count: 1,
           }
         },
         {
-          "$limit": 1,
+          $limit: 1,
         },
       ]);
 
