@@ -1,6 +1,7 @@
 import { ArgsType, Field, Float, InputType, ObjectType, registerEnumType } from "@nestjs/graphql";
 import { Type } from "class-transformer";
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsNotEmpty, IsOptional, IsString, Max, MaxLength, ValidateNested } from "class-validator";
+import { FILE } from "dns";
 import { SurveyAnswer } from "src/model/survey-answer.model";
 import { SurveyQuestion } from "src/model/survey-question.model";
 import { Survey } from "src/model/survey.model";
@@ -107,17 +108,6 @@ export class TimePrepositionType {
 }
 
 @ObjectType()
-export class CalculateAverageUnitGlobal {
-
-  @Field(type => String, { nullable: true })
-  unitName?: string;
-
-  @Field(type => TimePrepositionType)
-  data: TimePrepositionType;
-
-}
-
-@ObjectType()
 export class AverageType {
 
   @Field(type => Number, { nullable: true })
@@ -131,6 +121,19 @@ export class AverageType {
 
   @Field(type => User, { nullable: true })
   user?: any;
+
+  @Field(type => String, { nullable: true })
+  date?: string;
+
+}
+@ObjectType()
+export class CalculateAverageUnitGlobal {
+
+  @Field(type => String, { nullable: true })
+  unitName?: string;
+
+  @Field(type => [AverageType])
+  data: AverageType[];
 
 }
 

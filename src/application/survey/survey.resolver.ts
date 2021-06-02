@@ -130,13 +130,82 @@ export class SurveyResolver {
   @Query(returns => CalculateAverageUnitGlobal)
   @UseGuards(UserGuard, PrivilegesGuard)
   @IsAllowTo('calculate-unit-survey')
-  async calculateUnitSurvey(
-    @Context('user') { _id } : User,
-    @Args('unit', { type: () => String }) unit: string,
-    @Args('all', { type: () => Boolean, defaultValue: false }) all: boolean,
+  async calculateUnitQuestionnare(
+    @Args('id', { type: () => String }) id: string,
+    @Args('range', { type: () => DateRange, nullable: true }) range: DateRange,
+    @Args('isAccumulative', { type: () => Boolean, defaultValue: false }) isAccumulative: boolean,
   ) {
     try {
-      return this.surveyService.calculateAverageUnit(_id, unit, all);
+      const data = await this.surveyService.calculateAverageUnitGlobal(id, range);
+
+      if (!range) {
+        if (isAccumulative) {
+          let total_average: number = 0;
+
+          data.forEach((value) => {
+            total_average += value.averageAnswer
+          });
+
+          const response: CalculateAverageUnitGlobal = {
+            unitName: "Contoh",
+            data: [
+              {
+                averageAnswer: data.length != 0 ? total_average / data.length : 0
+              }
+            ]
+          }
+
+          return response;
+        }
+
+        const response: CalculateAverageUnitGlobal = {
+          unitName: "Contoh",
+          data
+        }
+
+        return response;
+      }
+
+      if(isAccumulative) {
+        let response_obj: object = {};
+
+        data.forEach((value) => {
+          if (value.date) {
+            if(!(value.date in response_obj)) {
+              response_obj[value.date] = [value.averageAnswer];
+            }
+            response_obj[value.date].push(value.averageAnswer);
+          }
+        });
+
+        Object.keys(response_obj).forEach((e) => {
+          let sum = 0;
+          response_obj[e].forEach((v) => {
+            sum += v
+          });
+          response_obj[e] = sum / response_obj[e].length
+        });
+        
+        let response: CalculateAverageUnitGlobal = {
+          unitName: "contoh",
+          data: []
+        };
+
+        Object.keys(response_obj).forEach((e) => {
+          response.data.push({
+            date: e,
+            averageAnswer: response_obj[e]
+          })
+        });
+
+        return response;
+      }
+
+      const response: CalculateAverageUnitGlobal = {
+        unitName: "Contoh",
+        data: data
+      }
+      return response
     } catch (error) {
       throw new InternalServerErrorException(error);
     }
@@ -145,11 +214,12 @@ export class SurveyResolver {
   @Query(returns => CalculateAverageUnitGlobal)
   @UseGuards(UserGuard, PrivilegesGuard)
   @IsAllowTo('calculate-global-survey')
-  async calculateGlobalSurvey(
-    @Args('all', { type: () => Boolean, defaultValue: false }) all: boolean,
+  async calculateGlobalQuestionnare(
+    @Args('range', { type: () => DateRange, nullable: true }) range: DateRange,
+    @Args('isAccumulative', { type: () => Boolean, defaultValue: false }) isAccumulative: boolean,
   ) {
     try {
-      return this.surveyService.calculateAverageGlobal(all);
+      return this.surveyService.calculateAverageUnitGlobal(null, range);
     } catch (error) {
       throw new InternalServerErrorException(error);
     }

@@ -299,394 +299,217 @@ export class SurveyService {
     }
   }
 
-  async calculateAverageUnit(user?: any, unit?: any, all: boolean = false) {
-    const findUnit = await this.unitModel.findOne({
-      name: unit
-    });
+  async calculateAverageUnitGlobal(unit?: string, range?: DateRange) {
+    let pipeline: any[] = [];
 
-    const present_survey = await this.surveyModel.aggregate([
-      {
-        "$lookup": {
-          "from": "users",
-          "localField": "user",
-          "foreignField": "_id",
-          "as": "user"
-        }
-      },
-      {
-        "$unwind": "$user"
-      },
-      {
-        "$match": {
-          "user.unit": findUnit._id,
-          "createdAt": {
-            "$lte": new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()+1} 00:00:00`),
-            "$gte": new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()} 00:00:00`)
-          }
-        }
-      },
-      {
-        "$unwind": "$body",
-      },
-      {
-        "$lookup": {
-          "from": "surveyquestions",
-          "localField": "body.question",
-          "foreignField": "_id",
-          "as": "question"
-        }
-      },
-      {
-        "$lookup": {
-          "from": "surveyanswers",
-          "localField": "body.answer",
-          "foreignField": "_id",
-          "as": "answer"
-        }
-      },
-      {
-        "$unwind": "$question"
-      },
-      {
-        "$unwind": "$answer"
-      },
-      {
-        "$match": {
-          "question.type": {
-            "$eq": "KUESIONER"
-          }
-        }
-      },
-      {
-        "$group": {
-          "_id": "$question.question",
-          "averageAnswer": {
-            "$avg": "$answer.value"
-          },
-          "count": {
-            "$sum": 1
-          }
-        }
-      },
-      {
-        "$project": {
-          "_id": 0,
-          "surveyQuestion": "$_id",
-          "averageAnswer": "$averageAnswer",
-          "sum": 1,
-          "count": 1
-        }
-      }
-    ]);
-
-    const yesterday_survey = await this.surveyModel.aggregate([
-      {
-        "$lookup": {
-          "from": "users",
-          "localField": "user",
-          "foreignField": "_id",
-          "as": "user"
-        }
-      },
-      {
-        "$unwind": "$user"
-      },
-      {
-        "$match": {
-          "user.unit": findUnit._id,
-          "createdAt": {
-            "$lte": new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()} 00:00:00`),
-            "$gte": new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()-1} 00:00:00`)
-          }
-        }
-      },
-      {
-        "$unwind": "$body",
-      },
-      {
-        "$lookup": {
-          "from": "surveyquestions",
-          "localField": "body.question",
-          "foreignField": "_id",
-          "as": "question"
-        }
-      },
-      {
-        "$lookup": {
-          "from": "surveyanswers",
-          "localField": "body.answer",
-          "foreignField": "_id",
-          "as": "answer"
-        }
-      },
-      {
-        "$unwind": "$question"
-      },
-      {
-        "$unwind": "$answer"
-      },
-      {
-        "$match": {
-          "question.type": {
-            "$eq": "KUESIONER"
-          }
-        }
-      },
-      {
-        "$group": {
-          "_id": "$question.question",
-          "averageAnswer": {
-            "$avg": "$answer.value"
-          },
-          "count": {
-            "$sum": 1
-          }
-        }
-      },
-      {
-        "$project": {
-          "_id": 0,
-          "surveyQuestion": "$_id",
-          "averageAnswer": "$averageAnswer",
-          "sum": 1,
-          "count": 1
-        }
-      }
-    ]);
-
-    if (all) {
-      let total_average = {
-        present: 0,
-        past: 0
-      }
-      present_survey.forEach((value) => {
-        total_average.present += value.averageAnswer
-      });
-
-      yesterday_survey.forEach((value) => {
-        total_average.past += value.averageAnswer
-      })
-
-      const result: CalculateAverageUnitGlobal = {
-        unitName: unit,
-        data: {
-          present: [
-            {
-              averageAnswer: present_survey.length != 0 ? total_average.present / present_survey.length : 0
+    if (unit) {
+      if (range) {
+        pipeline = [
+          {
+            $match: {
+              unit: ObjectId(unit),
+              createdAt: {
+                $gte: new Date(range.from),
+                $lte: new Date(range.to)
+              }
             }
-          ],
-          yesterday: [
-            {
-              averageAnswer: yesterday_survey.length != 0 ? total_average.past / yesterday_survey.length : 0
+          }
+        ]
+      } else {
+        pipeline = [
+          {
+            $match: {
+              unit: ObjectId(unit)
             }
-          ]
-        }
-      };
-
-      return result
+          }
+        ]
+      }
+    } else {
+      if (range) {
+        pipeline = [
+          {
+            $match: {
+              createdAt: {
+                $gt: range.from,
+                $lt: range.to
+              }
+            }
+          }
+        ]
+      }
     }
 
-    const result: CalculateAverageUnitGlobal = {
-      unitName: unit,
-      data: {
-        present: present_survey,
-        yesterday: yesterday_survey
-      }
-    };
+    if (!range) {
+      const questionnares_mean = await this.surveyModel.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            let: {
+              "user": "$_id"
+            },
+            as: "user",
+            pipeline
+          }
+        },
+        {
+          $unwind: "$user"
+        },
+        {
+          $unwind: "$body",
+        },
+        {
+          $lookup: {
+            from: "surveyquestions",
+            localField: "body.question",
+            foreignField: "_id",
+            as: "question"
+          }
+        },
+        {
+          $lookup: {
+            from: "surveyanswers",
+            localField: "body.answer",
+            foreignField: "_id",
+            as: "answer"
+          }
+        },
+        {
+          $unwind: "$question"
+        },
+        {
+          $unwind: "$answer"
+        },
+        {
+          $match: {
+            "question.type": {
+              $eq: "KUESIONER"
+            }
+          }
+        },
+        {
+          $group: {
+            _id: "$question.question",
+            averageAnswer: {
+              $avg: "$answer.value"
+            },
+            count: {
+              $sum: 1
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            surveyQuestion: "$_id",
+            averageAnswer: "$averageAnswer",
+            sum: 1,
+            count: 1
+          },
+        },
+        {
+          $sort: {
+            date: 1
+          }
+        },
+      ]);
+      
+      return questionnares_mean;
+    }
 
-    return result
-
-  }
-
-  async calculateAverageGlobal(all: boolean =  false) {
+    const questionnares_mean = await this.surveyModel.aggregate([
+      {
+        $lookup: {
+          from: "users",
+          let: {
+            "user": "$_id"
+          },
+          as: "user",
+          pipeline
+        }
+      },
+      {
+        $unwind: "$user"
+      },
+      {
+        $unwind: "$body",
+      },
+      {
+        $lookup: {
+          from: "surveyquestions",
+          localField: "body.question",
+          foreignField: "_id",
+          as: "question"
+        }
+      },
+      {
+        $lookup: {
+          from: "surveyanswers",
+          localField: "body.answer",
+          foreignField: "_id",
+          as: "answer"
+        }
+      },
+      {
+        $unwind: "$question"
+      },
+      {
+        $unwind: "$answer"
+      },
+      {
+        $match: {
+          "question.type": {
+            $eq: "KUESIONER"
+          }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            question: "$question.question",
+            month: { $month: "$createdAt" },
+            day: { $dayOfMonth: "$createdAt" },
+            year: { $year: "$createdAt" }
+          },
+          averageAnswer: {
+            $avg: "$answer.value"
+          },
+          count: {
+            $sum: 1
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          surveyQuestion: "$_id.question",
+          date: {
+            $concat: [
+              {
+                $toString: "$_id.year"
+              }, 
+              "-", 
+              {
+                $toString: "$_id.month"
+              },
+              "-", 
+              {
+                $toString: "$_id.day"
+              },
+            ]
+          },
+          averageAnswer: "$averageAnswer",
+          sum: 1,
+          count: 1
+        },
+      },
+      {
+        $sort: {
+          date: 1
+        }
+      },
+    ]);
     
-    const present_survey = await this.surveyModel.aggregate([
-      {
-        "$lookup": {
-          "from": "users",
-          "localField": "user",
-          "foreignField": "_id",
-          "as": "user"
-        }
-      },
-      {
-        "$unwind": "$user"
-      },
-      {
-        "$match": {
-          "createdAt": {
-            "$lte": new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()+1} 00:00:00`),
-            "$gte": new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()} 00:00:00`)
-          }
-        }
-      },
-      {
-        "$unwind": "$body",
-      },
-      {
-        "$lookup": {
-          "from": "surveyquestions",
-          "localField": "body.question",
-          "foreignField": "_id",
-          "as": "question"
-        }
-      },
-      {
-        "$lookup": {
-          "from": "surveyanswers",
-          "localField": "body.answer",
-          "foreignField": "_id",
-          "as": "answer"
-        }
-      },
-      {
-        "$unwind": "$question"
-      },
-      {
-        "$unwind": "$answer"
-      },
-      {
-        "$match": {
-          "question.type": {
-            "$eq": "KUESIONER"
-          }
-        }
-      },
-      {
-        "$group": {
-          "_id": "$question.question",
-          "averageAnswer": {
-            "$avg": "$answer.value"
-          },
-          "count": {
-            "$sum": 1
-          }
-        }
-      },
-      {
-        "$project": {
-          "_id": 0,
-          "surveyQuestion": "$_id",
-          "averageAnswer": "$averageAnswer",
-          "sum": 1,
-          "count": 1
-        }
-      }
-    ]);
-
-    const yesterday_survey = await this.surveyModel.aggregate([
-      {
-        "$lookup": {
-          "from": "users",
-          "localField": "user",
-          "foreignField": "_id",
-          "as": "user"
-        }
-      },
-      {
-        "$unwind": "$user"
-      },
-      {
-        "$match": {
-          "createdAt": {
-            "$lte": new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()} 00:00:00`),
-            "$gte": new Date(`${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()-1} 00:00:00`)
-          }
-        }
-      },
-      {
-        "$unwind": "$body",
-      },
-      {
-        "$lookup": {
-          "from": "surveyquestions",
-          "localField": "body.question",
-          "foreignField": "_id",
-          "as": "question"
-        }
-      },
-      {
-        "$lookup": {
-          "from": "surveyanswers",
-          "localField": "body.answer",
-          "foreignField": "_id",
-          "as": "answer"
-        }
-      },
-      {
-        "$unwind": "$question"
-      },
-      {
-        "$unwind": "$answer"
-      },
-      {
-        "$match": {
-          "question.type": {
-            "$eq": "KUESIONER"
-          }
-        }
-      },
-      {
-        "$group": {
-          "_id": "$question.question",
-          "averageAnswer": {
-            "$avg": "$answer.value"
-          },
-          "count": {
-            "$sum": 1
-          }
-        }
-      },
-      {
-        "$project": {
-          "_id": 0,
-          "surveyQuestion": "$_id",
-          "averageAnswer": "$averageAnswer",
-          "sum": 1,
-          "count": 1
-        }
-      }
-    ]);
-
-    if (all) {
-      let total_average = {
-        present: 0,
-        past: 0
-      }
-      present_survey.forEach((value) => {
-        total_average.present += value.averageAnswer
-      });
-
-      yesterday_survey.forEach((value) => {
-        total_average.past += value.averageAnswer
-      })
-
-      const result: CalculateAverageUnitGlobal = {
-        data: {
-          present: [
-            {
-              averageAnswer: present_survey.length != 0 ? total_average.present / present_survey.length : 0
-            }
-          ],
-          yesterday: [
-            {
-              averageAnswer: yesterday_survey.length != 0 ? total_average.past / yesterday_survey.length : 0
-            }
-          ]
-        }
-      };
-
-      return result
-    }
-
-    const result: CalculateAverageUnitGlobal = {
-      data: {
-        present: present_survey,
-        yesterday: yesterday_survey
-      }
-    };
-
-    return result
+    return questionnares_mean;
 
   }
 
