@@ -49,3 +49,26 @@ export class UpdateMyProfile {
    fullname: string;
 
 }
+
+@ArgsType()
+export class ChangePasswordArgs {
+
+
+  @Field(type => String)
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  oldPassword: string;
+
+  @Field(type => String)
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  newPassword: string
+
+  @Field(type => String)
+  @Match('newPassword')
+  @IsString()
+  newPasswordConfirmation: string;
+
+}
