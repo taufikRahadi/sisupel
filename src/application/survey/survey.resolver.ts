@@ -164,10 +164,10 @@ export class SurveyResolver {
   @UseGuards(UserGuard, PrivilegesGuard)
   @IsAllowTo('calculate-global-survey')
   async getBestFrontDeskScores(
-    @Args('sortBy', { type: () => SortByEnum, defaultValue: 0 }) sortBy: SortByEnum,
+    // @Args('sortBy', { type: () => SortByEnum, defaultValue: 0 }) sortBy: SortByEnum,
   ) {
     try {
-      const data: AverageType = await this.surveyService.getBestFrontDeskScores(sortBy);
+      const data: AverageType = await this.surveyService.getBestFrontDeskScores();
     
       return data
     } catch (error) {
