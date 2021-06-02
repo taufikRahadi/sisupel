@@ -5,7 +5,7 @@ import { UserGuard } from "src/infrastructure/user.guard";
 import { User } from "src/model/user.model";
 import { IsAllowTo } from "src/utils/decorators/privileges.decorator";
 import { UserService } from "./user.service";
-import { CreateUserPayload, UpdateMyProfile } from "./user.type";
+import { ChangePasswordArgs, CreateUserPayload, UpdateMyProfile } from "./user.type";
 import { GraphQLUpload } from 'apollo-server-express'
 import { FileUpload } from 'graphql-upload'
 import { createWriteStream, unlink } from "fs";
@@ -116,6 +116,25 @@ export class UserResolver {
   ) {
     await this.userService.create(payload);
     return true;
+  }
+
+  @Mutation(returns => Boolean)
+  @UseGuards(UserGuard)
+  async changePassword(
+    @Context('user') user: User,
+    @Args() payload: ChangePasswordArgs
+  ) {
+    const userData = await this.userService.findById(user._id)
+
+    if (!this.userService.comparePassword(payload.oldPassword, userData.password)) 
+      throw new BadRequestException('Password lama yang anda masukkan salah')
+
+    const newPassword = this.userService.hashPassword(payload.newPassword)
+    const userUpdate = await this.userService.updateUser(user._id, {
+      password: newPassword
+    })
+
+    return true
   }
 
   @ResolveField('unit', returns => Unit)
