@@ -42,8 +42,8 @@ export class SurveyQuestion extends BaseModel {
   @Prop({
     type: Number,
     required: true,
-    unique: true,
   })
+  @Field(type => Number)
   order?: number;
 }
 
