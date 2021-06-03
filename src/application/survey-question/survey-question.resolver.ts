@@ -35,43 +35,28 @@ export class SurveyQuestionResolver {
     }
   }
 
-  @Mutation(returns => Boolean)
+  @Mutation(returns => [SurveyQuestion])
   @UseGuards(UserGuard)
   async updateQuestionOrder(
     @Args() payload: SurveyQuestionPayload
   ) {
     try {
-      payload.body.forEach(async (value) => {
-        value['_id'] = ObjectIdTypes(value._id as string);
-        const duplicateData = await this.surveyQuestionModel.findOne({
-          order: value.order
-        });
-
-        if (String(duplicateData._id) != String(value._id) && duplicateData.order == value.order) {
-          const newData = await this.surveyQuestionModel.findById(value._id);
-          const zero = await this.surveyQuestionModel.find({
-            order: 0
-          });
-
-          await this.surveyQuestionModel.findOneAndUpdate({
-            _id: duplicateData._id
-          }, { order: 0 }, { useFindAndModify: false })
-          .then(async (v) => {
-            await this.surveyQuestionModel.findOneAndUpdate({
-              _id: value._id
-            }, value, { useFindAndModify: false })
-
-            await this.surveyQuestionModel.findByIdAndUpdate(duplicateData._id, { 
-              order: newData.order 
-            }, { useFindAndModify: false })
-          })
-
-        } else {
+      const data = await Promise.all(payload.body.map(async (value) => {
           await this.surveyQuestionModel.findOneAndUpdate({
             _id: value._id
-          }, value, { useFindAndModify: false })
-        }
-      });
+          }, value, { useFindAndModify: false });
+        }))
+        .then(async () => {
+          const find: SurveyQuestion[] = await this.surveyQuestionModel.find({
+            isActive: true
+          }).sort({
+            order: 1
+          });
+
+          return find
+        });
+      
+      return data;
     } catch (error) {
       throw new InternalServerErrorException(error)
     }
@@ -83,10 +68,11 @@ export class SurveyQuestionResolver {
   async createQuestion(
     @Args('question', { type: () => String, nullable: false }) question: string,
     @Args('type', { type: () => String, nullable: false, defaultValue: 'KUESIONER' }) type: 'KUESIONER' | 'ESSAY',
+    @Args('order', { type: () => Number, nullable: false }) order: number,
     @Context('user') { _id }: User
   ) {
     try {
-      await this.surveyQuestionModel.create({ question, type ,lastModifiedBy: _id })
+      await this.surveyQuestionModel.create({ question, type ,lastModifiedBy: _id, order })
       return true
     } catch (error) {
       throw new InternalServerErrorException(error)
