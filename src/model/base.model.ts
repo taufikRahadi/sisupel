@@ -6,8 +6,8 @@ export class BaseModel {
   _id?: string;
 
   @Field(type => String)
-  createdAt?: string;
+  createdAt?: Date;
 
   @Field(type => String)
-  updatedAt?: string;
+  updatedAt?: Date;
 }

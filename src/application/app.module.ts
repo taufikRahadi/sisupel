@@ -1,3 +1,4 @@
+import { BullModule } from '@nestjs/bull';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
@@ -14,6 +15,12 @@ import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
+    BullModule.forRoot({
+      redis: {
+        host: 'localhost',
+        port: 6379
+      }
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
@@ -32,7 +39,8 @@ import { UserModule } from './user/user.module';
         useFindAndModify: true,
         useNewUrlParser: true,
         useUnifiedTopology: true,
-        useCreateIndex: true
+        useCreateIndex: true,
+        loggerLevel: 'debug'
       }),
       inject: [ConfigService]
     }),
