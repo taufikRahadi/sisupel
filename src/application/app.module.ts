@@ -15,12 +15,6 @@ import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
-    BullModule.forRoot({
-      redis: {
-        host: 'localhost',
-        port: 6379
-      }
-    }),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
