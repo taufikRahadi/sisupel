@@ -1,8 +1,6 @@
-import { InjectQueue } from "@nestjs/bull";
 import { InternalServerErrorException, UseGuards } from "@nestjs/common";
 import { Args, Context, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/graphql";
 import { InjectModel } from "@nestjs/mongoose";
-import { Queue } from "bull";
 import { SSL_OP_CRYPTOPRO_TLSEXT_BUG } from "constants";
 import { Model } from "mongoose";
 import { PrivilegesGuard } from "src/infrastructure/privileges.guard";
