@@ -1046,23 +1046,20 @@ export class SurveyService {
 
   async getBestFrontDeskScores() {
     try {
-      // const sort = sortBy == 0 ? -1 : sortBy;
     
       const current_month_data = await this.surveyModel.aggregate([
         {
+          $match: {
+            $expr: {
+              $eq: [{ $month: "$createdAt" },new Date().getMonth()+1]
+            }
+          }
+        },
+        {
           $lookup: {
             from: "users",
-            let: {
-              user: "$_id"
-            },
-            pipeline: [
-              {
-                $project: {
-                  _id: 0,
-                  password: 0
-                }
-              }
-            ],
+            localField: "user",
+            foreignField: "_id",
             as: "user"
           }
         },
@@ -1072,13 +1069,6 @@ export class SurveyService {
             localField: "user.unit",
             foreignField: "_id",
             as: "unit"
-          }
-        },
-        {
-          $match: {
-            $expr: {
-              $eq: [{ $month: "$createdAt" },new Date().getMonth()+1]
-            }
           }
         },
         {
@@ -1104,26 +1094,33 @@ export class SurveyService {
           }
         },
         {
-          $unwind: "$body",
+          $unwind: "$body"
+        },
+        {
+          $group: {
+            _id: {
+              _id: "$body.question",
+              user: "$user",
+              unit: "$unit._id",
+            },
+            answers: {
+              $push: "$body.answer"
+            },
+            total: {
+              $sum: 1
+            }
+          }
+        },
+        {
+          $unwind: "$answers"
         },
         {
           $lookup: {
             from: "surveyquestions",
-            localField: "body.question",
+            localField: "_id._id",
             foreignField: "_id",
             as: "question"
           }
-        },
-        {
-          $lookup: {
-            from: "surveyanswers",
-            localField: "body.answer",
-            foreignField: "_id",
-            as: "answer"
-          }
-        },
-        {
-          $unwind: "$answer"
         },
         {
           $match: {
@@ -1133,42 +1130,56 @@ export class SurveyService {
           }
         },
         {
+          $lookup: {
+            from: "surveyanswers",
+            localField: "answers",
+            foreignField: "_id",
+            as: "answers"
+          }
+        },
+        {
+          $unwind: "$answers"
+        },
+        {
           $group: {
-            _id: "$user",
+            _id: {
+              user: "$_id.user",
+              unit: "$_id.unit"
+            },
             averageAnswer: {
-              "$avg": "$answer.value"
+              $avg: "$answers.value"
             },
-            unit: {
-              $first: "$unit"
-            },
-            count: {
+            total: {
               $sum: 1
             }
           }
         },
-        // {
-        //   $sort: {
-        //     averageAnswer: sort
-        //   }
-        // },
         {
           $project: {
             _id: 0,
-            user: {
-              fullname: "$_id.fullname",
-              unit: "$unit",
-              email: "$_id.email"
+            count: {
+              $ceil: { $divide: [ "$total", 7 ] }
             },
-            averageAnswer: "$averageAnswer",
-            count: 1,
+            user: {
+              fullname: "$_id.user.fullname",
+              email: "$_id.user.email",
+              photo: "$_id.user.photo",
+              unit: "$_id.unit"
+            },
+            averageAnswer: 1
           }
         },
         {
-          $limit: 1,
+          $sort: {
+            averageAnswer: 1
+          }
         },
+        {
+          $limit: 1
+        }
       ]);
 
-      return current_month_data[0];
+      return current_month_data;
     } catch (error) {
       throw new InternalServerErrorException(error);
     }

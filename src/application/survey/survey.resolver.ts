@@ -335,9 +335,9 @@ export class SurveyResolver {
     // @Args('sortBy', { type: () => SortByEnum, defaultValue: 0 }) sortBy: SortByEnum,
   ) {
     try {
-      const data: AverageType = await this.surveyService.getBestFrontDeskScores();
-    
-      return data
+      const data: AverageType = (await this.surveyService.getBestFrontDeskScores())[0];
+      
+      return data;
     } catch (error) {
       throw new InternalServerErrorException(error);
     }
