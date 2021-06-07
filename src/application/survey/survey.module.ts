@@ -14,7 +14,7 @@ import { SurveyService } from "./survey.service";
     RedisModule.forRootAsync({
       inject: [ConfigService],
       useFactory: async (env: ConfigService): Promise<RedisModuleOptions> => ({
-        host: env.get<string>('REDIST_HOST'),
+        host: env.get<string>('REDIS_HOST'),
         port: env.get<number>('REDIS_PORT')
       })
     }),
