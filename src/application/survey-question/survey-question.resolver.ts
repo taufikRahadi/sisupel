@@ -1,12 +1,15 @@
 import { InternalServerErrorException, UseGuards } from "@nestjs/common";
 import { Args, Context, Mutation, Query, Resolver } from "@nestjs/graphql";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
+import { Model, ObjectId, Types } from "mongoose";
 import { PrivilegesGuard } from "src/infrastructure/privileges.guard";
 import { UserGuard } from "src/infrastructure/user.guard";
 import { SurveyQuestion, SurveyQuestionDocument } from "src/model/survey-question.model";
 import { User } from "src/model/user.model";
 import { IsAllowTo } from "src/utils/decorators/privileges.decorator";
+import { SurveyQuestionPayload } from "./survey-question.type";
+
+const ObjectIdTypes = Types.ObjectId;
 
 @Resolver(of => SurveyQuestion)
 export class SurveyQuestionResolver {
@@ -32,16 +35,44 @@ export class SurveyQuestionResolver {
     }
   }
 
+  @Mutation(returns => [SurveyQuestion])
+  @UseGuards(UserGuard)
+  async updateQuestionOrder(
+    @Args() payload: SurveyQuestionPayload
+  ) {
+    try {
+      const data = await Promise.all(payload.body.map(async (value) => {
+          await this.surveyQuestionModel.findOneAndUpdate({
+            _id: value._id
+          }, value, { useFindAndModify: false });
+        }))
+        .then(async () => {
+          const find: SurveyQuestion[] = await this.surveyQuestionModel.find({
+            isActive: true
+          }).sort({
+            order: 1
+          });
+
+          return find
+        });
+      
+      return data;
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
   @Mutation(returns => Boolean)
   @UseGuards(UserGuard, PrivilegesGuard)
   @IsAllowTo('create-question')
   async createQuestion(
     @Args('question', { type: () => String, nullable: false }) question: string,
     @Args('type', { type: () => String, nullable: false, defaultValue: 'KUESIONER' }) type: 'KUESIONER' | 'ESSAY',
+    @Args('order', { type: () => Number, nullable: false }) order: number,
     @Context('user') { _id }: User
   ) {
     try {
-      await this.surveyQuestionModel.create({ question, type ,lastModifiedBy: _id })
+      await this.surveyQuestionModel.create({ question, type ,lastModifiedBy: _id, order })
       return true
     } catch (error) {
       throw new InternalServerErrorException(error)
