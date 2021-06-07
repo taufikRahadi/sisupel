@@ -157,6 +157,20 @@ export class AverageTypeUnit {
 
 }
 
+@ObjectType()
+export class EssayAnswer {
+
+  @Field(type => String)
+  answer: string;
+
+  @Field(type => Unit)
+  unit: string;
+
+  @Field(type => String)
+  date: string;
+
+}
+
 export enum SortByEnum {
   DESC,
   ASC
