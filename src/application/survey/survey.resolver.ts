@@ -16,7 +16,7 @@ import { Sort } from "src/utils/types/sort.enum";
 import { AuthenticationResolver } from "../authentication/authentication.resolver";
 import { UserService } from "../user/user.service";
 import { SurveyService } from "./survey.service";
-import { CalculateAverage, CreateSurveyPayload, SurveyResponse, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBodyResponse, AverageType, SortByEnum, AverageTypeUnit } from "./survey.type";
+import { CalculateAverage, CreateSurveyPayload, SurveyResponse, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBodyResponse, AverageType, SortByEnum, AverageTypeUnit, EssayAnswer } from "./survey.type";
 
 const today = new Date()
 
@@ -254,6 +254,32 @@ export class SurveyResolver {
   ) {
     console.log(range)
     return await this.surveyService.getBestUnit(limit, sort, range)
+  }
+
+  @Query(returns => [EssayAnswer])
+  @UseGuards(UserGuard)
+  async getEssayAnswers(
+    @Args('sort', { type: () => Sort, defaultValue: 0 }) sort: Sort,
+    @Args('limit', { type: () => Number, defaultValue: 10 }) limit: number
+  ) {
+    try {
+      let response: EssayAnswer[] = [];
+      (await this.surveyService.getEssayAnswers(sort, limit)).forEach((v) => {
+        v.body.forEach((e) => {
+          if(e.text) {
+            response.push({
+              answer: e.text,
+              date: v.createdAt.toLocaleString(),
+              unit: v.unit[0]
+            })
+          }
+        })
+      })
+      
+      return response;
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
   }
 
 }

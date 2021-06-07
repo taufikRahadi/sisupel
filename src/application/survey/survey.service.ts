@@ -760,4 +760,56 @@ export class SurveyService {
     }
   }
 
+  async getEssayAnswers(sort?: number, limit?: number) {
+    try {
+
+      return await this.surveyModel.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user"
+          }
+        },
+        {
+          $lookup: {
+            from: "units",
+            localField: "user.unit",
+            foreignField: "_id",
+            as: "unit"
+          }
+        },
+        {
+          $match: {
+            body: {
+              $elemMatch: {
+                text: { $exists: true }
+              }
+            }
+          }
+        },
+        {
+          $replaceRoot: {
+            newRoot: {
+              $mergeObjects: [ { $arrayElemAt: [ "$user", 0 ] }, "$$ROOT" ]
+            }
+          }
+        },
+        {
+          $project: {
+            user: 0
+          }
+        }
+      ])
+      .sort({
+        createdAt: sort == 0 ? -1 : sort
+      })
+      .limit(limit);
+
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
 }
