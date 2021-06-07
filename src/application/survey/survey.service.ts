@@ -6,6 +6,7 @@ import { Unit, UnitDocument } from "src/model/unit.model";
 import { DateRange } from "src/utils/types/date-range.type";
 import { Types } from 'mongoose'
 import { CalculateAverage, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBody, SurveyBodyPayload } from "./survey.type";
+import { RedisService } from "nestjs-redis";
 
 const ObjectId = Types.ObjectId
 // const ISODate = Types.Is
@@ -15,7 +16,10 @@ export class SurveyService {
   constructor(
     @InjectModel(Survey.name) private readonly surveyModel: Model<SurveyDocument>,
     @InjectModel(Unit.name) private readonly unitModel: Model<UnitDocument>,
+    private readonly redisService: RedisService
   ) {}
+
+  private redisClient = this.redisService.getClient()
 
   async create(survey: Survey): Promise<Survey> {
     try {
@@ -101,6 +105,74 @@ export class SurveyService {
         todayTotal: essayToday.map(val => val.question.length > 0).length,
         yesterdayTotal: essayYesterday.map(val => val.question.length > 0).length
       }
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
+  async checkNoAntrianRedis(noAntrian: string) {
+    const key = await this.redisClient.get(noAntrian)
+
+    if (!key)
+      throw new BadRequestException('Link tidak ditemukan')
+    
+    return true
+  }
+
+  async removeNoAntrianFromRedis(key: string) {
+    try {
+      await this.redisClient.del(key)
+      return true
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
+  async getNoAntrian(unit: string) {
+    const date = new Date()
+    try {
+      const surveys = await this.surveyModel.aggregate([{
+        $lookup: {
+            from: 'users',
+            localField: 'user',
+            foreignField: '_id',
+            as: 'user'
+        }
+    }, {
+        $unwind: {
+            path: "$user",
+        }
+    }, {
+        $match: {
+            "user.unit": ObjectId(unit),
+            "createdAt": {
+                $gt: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 8, 0)
+            }
+        }
+    }])
+
+    const dateString = `/${date.getFullYear()}${date.getMonth()}${date.getDate()}/`
+    let length = surveys.length + 1
+    let checker = true
+    while (checker) {
+      if (await this.redisClient.get(dateString + length)) {
+        length++
+      } else {
+        checker = false
+        break
+      }
+    }
+
+    const link = dateString + length
+    await this.redisClient.set(
+      link, 
+      String(
+        Math.floor(
+          Number(new Date()) / 1000
+        )
+      )
+    )
+    return link
     } catch (error) {
       throw new InternalServerErrorException(error)
     }
@@ -251,7 +323,7 @@ export class SurveyService {
         .find({
           $and: [
             { "user": user },
-            { createdAt: { $gte: String(range.from), $lte: String(range.to) } }
+            { createdAt: { $gte: new Date(range.from), $lte: new Date(range.to) } }
           ] 
         })
         .sort({ 'createdAt': sort })

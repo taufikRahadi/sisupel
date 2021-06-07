@@ -32,7 +32,8 @@ import { UserModule } from './user/user.module';
         useFindAndModify: true,
         useNewUrlParser: true,
         useUnifiedTopology: true,
-        useCreateIndex: true
+        useCreateIndex: true,
+        loggerLevel: 'debug'
       }),
       inject: [ConfigService]
     }),

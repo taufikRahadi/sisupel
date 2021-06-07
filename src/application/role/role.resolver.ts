@@ -1,5 +1,5 @@
 import { BadRequestException, InternalServerErrorException, UseGuards } from "@nestjs/common";
-import { Args, Context, Mutation, Resolver } from "@nestjs/graphql";
+import { Args, Context, Mutation, Query, Resolver } from "@nestjs/graphql";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { PrivilegesGuard } from "src/infrastructure/privileges.guard";
@@ -29,6 +29,17 @@ export class RoleResolver {
         lastModifiedBy: _id
       })
       return true
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
+  @Query(returns => [Role])
+  async getAllRoles() {
+    try {
+      const roles = await this.roleModel.find().sort({ name: 'asc' }).populate('privileges')
+      
+      return roles
     } catch (error) {
       throw new InternalServerErrorException(error)
     }
@@ -83,6 +94,16 @@ export class RoleResolver {
       )
 
       return true
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
+  @Query(returns => [RolePrivilege])
+  @UseGuards(UserGuard)
+  async getAllPrivileges() {
+    try {
+      return await this.rolePrivilegeModel.find().sort({ name: 'asc' })
     } catch (error) {
       throw new InternalServerErrorException(error)
     }

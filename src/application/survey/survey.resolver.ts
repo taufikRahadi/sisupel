@@ -47,9 +47,26 @@ export class SurveyResolver {
     }
   }
 
+  @Mutation(returns => Boolean)
+  async createSurveyFromGeneratedLink(
+    @Args() payload: CreateSurveyPayload,
+    @Args('references', { type: () => String, nullable: false }) reference: string 
+  ) {
+    await this.surveyService.checkNoAntrianRedis(reference)
+    const [_, date, noAntrian] = reference.split('/')
+
+    const newSurvey = await this.surveyService.create({
+      body: payload.body,
+      user: (await this.userService.findByUsername('halo-ut@ut.ac.id'))._id,
+      noAntrian
+    })
+
+    await this.surveyService.removeNoAntrianFromRedis(reference)
+    return true
+  }
+
   @Query(returns => [SurveyResponse])
-  @UseGuards(UserGuard, PrivilegesGuard)
-  @IsAllowTo('read-self-survey')
+  @UseGuards(UserGuard)
   async getMySurvey(
     @Args('limit', { type: () => Number, nullable: true }) limit: number,
     @Context('user') { _id, unit }: User,
@@ -353,6 +370,15 @@ export class SurveyResolver {
     return await this.surveyService.getBestUnit(limit, sort, range)
   }
 
+  @Mutation(returns => String)
+  @UseGuards(UserGuard, PrivilegesGuard)
+  // @IsAllowTo('generate-link')
+  async generateSurveyLink(
+    @Context('user') { unit }: User
+  ) {
+    const u: any = unit
+    return await this.surveyService.getNoAntrian(u._id)
+  }
   @Query(returns => [EssayAnswer])
   @UseGuards(UserGuard)
   async getEssayAnswers(
