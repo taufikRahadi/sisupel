@@ -514,117 +514,116 @@ export class SurveyService {
   }
 
   async getBestUnit(limit: number, sort: number = 0, range: DateRange) {
-    console.log({$gte: new Date(range.from),
-                $lte: new Date(range.from.setDate(range.from.getDate() + 1))})
+    // console.log({$gte: new Date(range.from),
+    //             $lte: new Date(range.from.setDate(range.from.getDate() + 1))})
     try {
-      sort = sort == 0 ? 1 : -1
 
-      const surveys = await this.surveyModel.aggregate(
-        [ {
+      const surveys = await this.surveyModel.aggregate([
+        {
           $match: {
-              "createdAt": {
-                $gte: new Date(range.from),
-                $lte: new Date(range.to.setDate(range.to.getDate() + 1))
-              }
+            createdAt: {
+              $gte: new Date(range.from),
+              $lte: new Date(range.to)
+            }
           }
-        }, {
+        },
+        {
           $lookup: {
-              from: 'users',
-              let: {
-                  "user": "$_id"
-              },
-              as: "user",
-              pipeline: [{
-                  $project: {
-                      "_id": 0,
-                      "password": 0
-                  }
-              }]
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user"
           }
-      }, {
-          $unwind: {
-              path: "$user",
-          }
-      }, {
+        },
+        {
+          $unwind: "$user"
+        },
+        {
           $lookup: {
-              from: 'units',
-              localField: 'user.unit',
-              foreignField: '_id',
-              as: 'unit'
+            from: "units",
+            localField: "user.unit",
+            foreignField: "_id",
+            as: "unit"
           }
-      }, {
-          $unwind: {
-              path: "$unit",
-          }
-      }, {
-          $lookup: {
-              "from": "roles",
-              "localField": "user.role",
-              "foreignField": "_id",
-              "as": "role"
-          }
-      }, {
-          $unwind: {
-              path: "$role",
-          }
-      }, {
-          $match: {
-              "role.name": "FRONT DESK"
-          }
-      }, {
-          $unwind: {
-              path: "$body"
-          }
-      }, {
-          $lookup: {
-              "from": "surveyquestions",
-              "localField": "body.question",
-              "foreignField": "_id",
-              "as": "question"
-          }
-      }, {
-          $lookup: {
-              "from": "surveyanswers",
-              "localField": "body.answer",
-              "foreignField": "_id",
-              "as": "answer"
-          }
-      }, {
-          $unwind: {
-              path: "$answer",
-          }
-      }, {
+        },
+        {
+          $unwind: "$unit"
+        },
+        {
+          $unwind: "$body"
+        },
+        {
           $group: {
-              "_id": "$user",
-              "averageAnswer": {
-                  "$avg": "$answer.value"
-              },
-              "unit": {
-                  "$first": "$unit"
-              },
-              "count": {
-                  "$sum": 1
-              }
+            _id: {
+              _id: "$body.question",
+              unit: "$unit",
+            },
+            answers: {
+              $push: "$body.answer"
+            },
           }
-      }, {
-        $sort: {
-          "averageAnswer": sort
-        }
-      }, {
+        },
+        {
+          $unwind: "$answers"
+        },
+        {
+          $lookup: {
+            from: "surveyquestions",
+            localField: "_id._id",
+            foreignField: "_id",
+            as: "question"
+          }
+        },
+        {
+          $match: {
+            "question.type": {
+              $eq: "KUESIONER"
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: "surveyanswers",
+            localField: "answers",
+            foreignField: "_id",
+            as: "answers"
+          }
+        },
+        {
+          $unwind: "$answers"
+        },
+        {
+          $group: {
+            _id: "$_id.unit",
+            averageAnswer: {
+              $avg: "$answers.value"
+            },
+            total: {
+              $sum: 1
+            }
+          }
+        },
+        {
           $project: {
-              "_id": 0,
-              "unit": {
-                  "name": "$unit.name",
-              },
-              "averageAnswer": "$averageAnswer",
-              "count": 1,
+            _id: 0,
+            unit: "$_id",
+            averageAnswer: 1,
+            count: {
+              $ceil: { $divide: [ "$total", 7 ] }
+            }
           }
-      }, {
+        },
+        {
+          $sort: {
+            averageAnswer: sort == 0 ? -1 : sort
+          }
+        },
+        {
           $limit: limit
-      }]
-      )
+        }
+      ]);
 
-      return surveys
+      return surveys;
     } catch (error) {
       throw new InternalServerErrorException(error)
     }
