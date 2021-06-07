@@ -38,6 +38,13 @@ export class SurveyQuestion extends BaseModel {
     ref: 'User'
   })
   lastModifiedBy: string;
+
+  @Prop({
+    type: Number,
+    required: true,
+  })
+  @Field(type => Number)
+  order?: number;
 }
 
 export const SurveyQuestionModel = SchemaFactory.createForClass(SurveyQuestion)
