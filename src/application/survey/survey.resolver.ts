@@ -252,7 +252,6 @@ export class SurveyResolver {
     @Args('limit', { type: () => Number, defaultValue: 5 }) limit: number,
     @Args('range', { type: () => DateRange, defaultValue: { from: new Date(today.setMonth(today.getMonth() - 1)), to: new Date() } }) range: DateRange
   ) {
-    console.log(range)
     return await this.surveyService.getBestUnit(limit, sort, range)
   }
 
