@@ -73,7 +73,7 @@ export class SurveyResolver {
     @Args('range', { type: () => DateRange, nullable: false }) range: DateRange,
     @Args('sort', { type: () => Sort, defaultValue: Sort['asc'] }) sort: Sort
   ) {
-    const surveys = await this.surveyService.getMySurvey(_id, Sort[sort], limit, range)
+    const surveys = await this.surveyService.getMySurvey(_id, Sort[sort], limit, range);
     return surveys
   }
 
@@ -145,8 +145,8 @@ export class SurveyResolver {
   }
 
   @Query(returns => CalculateAverageUnitGlobal)
-  @UseGuards(UserGuard, PrivilegesGuard)
-  @IsAllowTo('calculate-unit-survey')
+  @UseGuards(UserGuard)
+  // @IsAllowTo('calculate-unit-survey')
   async calculateUnitQuestionnare(
     @Args('id', { type: () => String }) id: string,
     @Args('range', { type: () => DateRange, nullable: true }) range: DateRange,
@@ -155,7 +155,7 @@ export class SurveyResolver {
     try {
       const data = await this.surveyService.calculateQuestionnareUnit(id, range);
 
-      const unitName = data[0].unit;
+      const unitName = data.length !=0 ? data[0].unit : null;
 
       data.forEach((v) => {
         delete v.unit
@@ -315,7 +315,6 @@ export class SurveyResolver {
         });
         
         let response: CalculateAverageUnitGlobal = {
-          unitName: "contoh",
           data: []
         };
 
