@@ -145,8 +145,8 @@ export class SurveyResolver {
   }
 
   @Query(returns => CalculateAverageUnitGlobal)
-  @UseGuards(UserGuard)
-  // @IsAllowTo('calculate-unit-survey')
+  @UseGuards(UserGuard, PrivilegesGuard)
+  @IsAllowTo('calculate-unit-survey')
   async calculateUnitQuestionnare(
     @Args('id', { type: () => String }) id: string,
     @Args('range', { type: () => DateRange, nullable: true }) range: DateRange,
@@ -345,8 +345,8 @@ export class SurveyResolver {
   }
 
   @Query(returns => AverageType)
-  @UseGuards(UserGuard, PrivilegesGuard)
-  @IsAllowTo('calculate-global-survey')
+  @UseGuards(UserGuard)
+  // @IsAllowTo('calculate-global-survey')
   async getBestFrontDeskScores(
     // @Args('sortBy', { type: () => SortByEnum, defaultValue: 0 }) sortBy: SortByEnum,
   ) {
