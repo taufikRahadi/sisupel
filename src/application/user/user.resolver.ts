@@ -142,11 +142,11 @@ export class UserResolver {
     return await this.unitModel.findById(unit)
   }
 
-  @ResolveField('photo', returns => String)
+  @ResolveField('photo', returns => String, { nullable: true })
   async getPhoto(
     @Parent() { photo }: User
   ) {
-    if (photo.length > 1) return `/photo-profile/${photo}`
+    if (photo && photo.length > 1) return `/photo-profile/${photo}`
     return photo
   }
 
