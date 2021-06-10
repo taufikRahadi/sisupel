@@ -73,7 +73,7 @@ export class SurveyResolver {
     @Args('range', { type: () => DateRange, nullable: false }) range: DateRange,
     @Args('sort', { type: () => Sort, defaultValue: Sort['asc'] }) sort: Sort
   ) {
-    const surveys = await this.surveyService.getMySurvey(_id, Sort[sort], limit, range)
+    const surveys = await this.surveyService.getMySurvey(_id, Sort[sort], limit, range);
     return surveys
   }
 
@@ -155,7 +155,7 @@ export class SurveyResolver {
     try {
       const data = await this.surveyService.calculateQuestionnareUnit(id, range);
 
-      const unitName = data[0].unit;
+      const unitName = data.length !=0 ? data[0].unit : null;
 
       data.forEach((v) => {
         delete v.unit
@@ -315,7 +315,6 @@ export class SurveyResolver {
         });
         
         let response: CalculateAverageUnitGlobal = {
-          unitName: "contoh",
           data: []
         };
 
@@ -346,8 +345,8 @@ export class SurveyResolver {
   }
 
   @Query(returns => AverageType)
-  @UseGuards(UserGuard, PrivilegesGuard)
-  @IsAllowTo('calculate-global-survey')
+  @UseGuards(UserGuard)
+  // @IsAllowTo('calculate-global-survey')
   async getBestFrontDeskScores(
     // @Args('sortBy', { type: () => SortByEnum, defaultValue: 0 }) sortBy: SortByEnum,
   ) {
