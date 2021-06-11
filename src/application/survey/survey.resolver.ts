@@ -16,7 +16,7 @@ import { Sort } from "src/utils/types/sort.enum";
 import { AuthenticationResolver } from "../authentication/authentication.resolver";
 import { UserService } from "../user/user.service";
 import { SurveyService } from "./survey.service";
-import { CalculateAverage, CreateSurveyPayload, SurveyResponse, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBodyResponse, AverageType, SortByEnum, AverageTypeUnit, EssayAnswer } from "./survey.type";
+import { CalculateAverage, CreateSurveyPayload, SurveyResponse, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBodyResponse, AverageType, SortByEnum, AverageTypeUnit, EssayAnswer, SurveyLinkStatusResponse } from "./survey.type";
 
 const today = new Date()
 
@@ -378,6 +378,14 @@ export class SurveyResolver {
     const u: any = unit
     return await this.surveyService.getNoAntrian(u._id)
   }
+
+  @Query(returns => [SurveyLinkStatusResponse])
+  @UseGuards(UserGuard, PrivilegesGuard)
+  async getSurveyLinkStatus() {
+    console.log(await this.surveyService.getNoAntrianStatus())
+    return await this.surveyService.getNoAntrianStatus()
+  }
+
   @Query(returns => [EssayAnswer])
   @UseGuards(UserGuard)
   async getEssayAnswers(

@@ -5,7 +5,7 @@ import { Survey, SurveyDocument } from "src/model/survey.model";
 import { Unit, UnitDocument } from "src/model/unit.model";
 import { DateRange } from "src/utils/types/date-range.type";
 import { Types } from 'mongoose'
-import { CalculateAverage, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBody, SurveyBodyPayload } from "./survey.type";
+import { CalculateAverage, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBody, SurveyBodyPayload, SurveyLinkStatusResponse } from "./survey.type";
 import { RedisService } from "nestjs-redis";
 
 const ObjectId = Types.ObjectId
@@ -121,8 +121,32 @@ export class SurveyService {
 
   async removeNoAntrianFromRedis(key: string) {
     try {
-      await this.redisClient.del(key)
+      await this.redisClient.set(key, 'false')
       return true
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
+  async getNoAntrianStatus(): Promise<SurveyLinkStatusResponse[]> {
+    try {
+      const date = new Date()
+      const dateString = `/${date.getFullYear()}${date.getMonth() + 1}${date.getDate()}/`
+
+      let checker: boolean = true
+      let num = 1
+      const noAntrianArray: Array<SurveyLinkStatusResponse> = []
+      while (checker) {
+        const surveyLinkOnRedis = await this.redisClient.get(dateString + num)
+        if (surveyLinkOnRedis !== null) {
+          noAntrianArray.push({ link: dateString + num, status: Boolean(surveyLinkOnRedis) ? true : Boolean(surveyLinkOnRedis) })
+          num++
+        } else {
+          checker = false
+        }
+      }
+
+      return noAntrianArray
     } catch (error) {
       throw new InternalServerErrorException(error)
     }
@@ -138,41 +162,43 @@ export class SurveyService {
             foreignField: '_id',
             as: 'user'
         }
-    }, {
-        $unwind: {
-            path: "$user",
-        }
-    }, {
-        $match: {
-            "user.unit": ObjectId(unit),
-            "createdAt": {
-                $gt: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 8, 0)
-            }
-        }
-    }])
+      }, {
+          $unwind: {
+              path: "$user",
+          }
+      }, {
+          $match: {
+              "user.unit": ObjectId(unit),
+              "createdAt": {
+                  $gt: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 8, 0)
+              }
+          }
+      }])
 
-    const dateString = `/${date.getFullYear()}${date.getMonth()}${date.getDate()}/`
-    let length = surveys.length + 1
-    let checker = true
-    while (checker) {
-      if (await this.redisClient.get(dateString + length)) {
-        length++
-      } else {
-        checker = false
-        break
+      const dateString = `/${date.getFullYear()}${date.getMonth() + 1}${date.getDate()}/`
+      let length = surveys.length + 1
+      let checker = true
+      while (checker) {
+        if (await this.redisClient.get(dateString + length)) {
+          length++
+        } else {
+          checker = false
+          break
+        }
       }
-    }
 
-    const link = dateString + length
-    await this.redisClient.set(
+      const link = dateString + length
+      await this.redisClient.set(
+        link, 
       link, 
-      String(
-        Math.floor(
-          Number(new Date()) / 1000
+        link, 
+        String(
+          Math.floor(
+            Number(new Date()) / 1000
+          )
         )
       )
-    )
-    return link
+      return link
     } catch (error) {
       throw new InternalServerErrorException(error)
     }

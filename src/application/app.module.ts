@@ -33,7 +33,6 @@ import { UserModule } from './user/user.module';
         useNewUrlParser: true,
         useUnifiedTopology: true,
         useCreateIndex: true,
-        loggerLevel: 'debug'
       }),
       inject: [ConfigService]
     }),
