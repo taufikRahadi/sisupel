@@ -138,6 +138,17 @@ export class CalculateAverageUnitGlobal {
 }
 
 @ObjectType()
+export class SurveyLinkStatusResponse {
+
+  @Field(type => String)
+  link: string;
+
+  @Field(type => Boolean)
+  status: boolean;
+
+}
+
+@ObjectType()
 export class UnitType {
   @Field(type => String)
   name: string;
