@@ -190,8 +190,6 @@ export class SurveyService {
       const link = dateString + length
       await this.redisClient.set(
         link, 
-      link, 
-        link, 
         String(
           Math.floor(
             Number(new Date()) / 1000

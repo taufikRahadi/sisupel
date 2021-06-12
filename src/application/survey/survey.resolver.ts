@@ -371,7 +371,7 @@ export class SurveyResolver {
 
   @Mutation(returns => String)
   @UseGuards(UserGuard, PrivilegesGuard)
-  // @IsAllowTo('generate-link')
+  @IsAllowTo('generate-link')
   async generateSurveyLink(
     @Context('user') { unit }: User
   ) {
