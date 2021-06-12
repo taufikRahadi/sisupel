@@ -1333,4 +1333,65 @@ export class SurveyService {
     }
   }
 
+  async getEssayAnswersByFrontdesk(id?: string, limit?: number) {
+    try {
+      return await this.surveyModel.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user"
+          }
+        },
+        {
+          $match: {
+            body: {
+              $elemMatch: {
+                text: { $exists: true }
+              }
+            }
+          }
+        },
+        {
+          $unwind: "$user"
+        },
+        {
+          $lookup: {
+            from: "roles",
+            localField: "user.role",
+            foreignField: "_id",
+            as: "role"
+          }
+        },
+        {
+          $unwind: "$role"
+        },
+        {
+          $lookup: {
+            from: "units",
+            localField: "user.unit",
+            foreignField: "_id",
+            as: "unit"
+          }
+        },
+        {
+          $unwind: "$unit"
+        },
+        {
+          $match: {
+            "user._id": ObjectId(id),
+            "role.name": "FRONT DESK"
+          }
+        }
+      ])
+      .sort({
+        createdAt: 1
+      })
+      .limit(limit && limit > 0 ? limit : 10);
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
 }
