@@ -23,6 +23,8 @@ export class SurveyService {
 
   async create(survey: Survey): Promise<Survey> {
     try {
+      // const surveys = await this.
+
       return await this.surveyModel.create(survey)
     } catch (error) {
       throw new InternalServerErrorException(error)
