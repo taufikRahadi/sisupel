@@ -175,10 +175,13 @@ export class EssayAnswer {
   answer: string;
 
   @Field(type => Unit)
-  unit: string;
+  unit?: string;
 
   @Field(type => String)
   date: string;
+
+  @Field(type => User)
+  user?: User;
 
 }
 
