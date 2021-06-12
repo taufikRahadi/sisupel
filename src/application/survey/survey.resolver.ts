@@ -33,11 +33,13 @@ export class SurveyResolver {
   @IsAllowTo('create-survey')
   async createSurvey(
     @Args() payload: CreateSurveyPayload,
+    @Args('noAntrian', { type: () => String, nullable: false }) noAntrian: string,
     @Context('user') { _id }: User
   ): Promise<Boolean> {
     try {
       const newSurvey = await this.surveyService.create({ 
         body: payload.body,
+        noAntrian,
         user: _id 
       })
 
@@ -48,6 +50,7 @@ export class SurveyResolver {
   }
 
   @Mutation(returns => Boolean)
+  @IsAllowTo('generate-link')
   async createSurveyFromGeneratedLink(
     @Args() payload: CreateSurveyPayload,
     @Args('references', { type: () => String, nullable: false }) reference: string 
