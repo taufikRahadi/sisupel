@@ -137,14 +137,33 @@ export class SurveyResolver {
     return await this.surveyService.calculateEssayUnit(unitId._id)
   }
 
-  @Query(returns => CalculateAverage)
+  @Query(returns => [AverageType])
   @UseGuards(UserGuard, PrivilegesGuard)
   @IsAllowTo('calculate-self-survey')
-  async calculateSelfSurvey(
-    @Context('user') { _id }: User
+  async calculateFrontdeskQuestionnare(
+    @Context('user') { _id }: User,
+    @Args('range', { type: () => DateRange, nullable: true }) range: DateRange,
+    @Args('isAccumulative', { type: () => Boolean, defaultValue: false}) isAccumulative: boolean,
   ) {
+    try {
 
-    return await this.surveyService.calculateAverage(_id)
+      if (!range) {
+        if (isAccumulative) {
+          return await this.surveyService.calculateAverageFrontdeskAccumulative(_id, range);
+        }
+
+        return await this.surveyService.calculateAverageFrontdesk(_id, range);
+      }
+
+      if(isAccumulative) {
+        return await this.surveyService.calculateAverageFrontdeskAccumulative(_id, range);
+      }
+
+      return await this.surveyService.calculateAverageFrontdesk(_id, range);
+
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
   }
 
   @Query(returns => CalculateAverageUnitGlobal)
