@@ -125,6 +125,9 @@ export class AverageType {
   @Field(type => String, { nullable: true })
   date?: string;
 
+  @Field(type => Number, { nullable: true })
+  order?: number;
+
 }
 @ObjectType()
 export class CalculateAverageUnitGlobal {
