@@ -33,11 +33,13 @@ export class SurveyResolver {
   @IsAllowTo('create-survey')
   async createSurvey(
     @Args() payload: CreateSurveyPayload,
+    @Args('noAntrian', { type: () => String, nullable: false }) noAntrian: string,
     @Context('user') { _id }: User
   ): Promise<Boolean> {
     try {
       const newSurvey = await this.surveyService.create({ 
         body: payload.body,
+        noAntrian,
         user: _id 
       })
 
@@ -48,6 +50,7 @@ export class SurveyResolver {
   }
 
   @Mutation(returns => Boolean)
+  @IsAllowTo('generate-link')
   async createSurveyFromGeneratedLink(
     @Args() payload: CreateSurveyPayload,
     @Args('references', { type: () => String, nullable: false }) reference: string 
@@ -134,14 +137,33 @@ export class SurveyResolver {
     return await this.surveyService.calculateEssayUnit(unitId._id)
   }
 
-  @Query(returns => CalculateAverage)
+  @Query(returns => [AverageType])
   @UseGuards(UserGuard, PrivilegesGuard)
   @IsAllowTo('calculate-self-survey')
-  async calculateSelfSurvey(
-    @Context('user') { _id }: User
+  async calculateFrontdeskQuestionnare(
+    @Context('user') { _id }: User,
+    @Args('range', { type: () => DateRange, nullable: true }) range: DateRange,
+    @Args('isAccumulative', { type: () => Boolean, defaultValue: false}) isAccumulative: boolean,
   ) {
+    try {
 
-    return await this.surveyService.calculateAverage(_id)
+      if (!range) {
+        if (isAccumulative) {
+          return await this.surveyService.calculateAverageFrontdeskAccumulative(_id, range);
+        }
+
+        return await this.surveyService.calculateAverageFrontdesk(_id, range);
+      }
+
+      if(isAccumulative) {
+        return await this.surveyService.calculateAverageFrontdeskAccumulative(_id, range);
+      }
+
+      return await this.surveyService.calculateAverageFrontdesk(_id, range);
+
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
   }
 
   @Query(returns => CalculateAverageUnitGlobal)
@@ -406,6 +428,33 @@ export class SurveyResolver {
         })
       })
       
+      return response;
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+  
+  @Query(of => [EssayAnswer])
+  @UseGuards(UserGuard)
+  async getEssayAnswersByFrontdesk(
+    @Args('limit', { type: () => Number, defaultValue: 10 }) limit: number,
+    @Context('user') { _id }: User
+  )
+  {
+    try {
+      let response: EssayAnswer[] = [];
+      (await this.surveyService.getEssayAnswersByFrontdesk(_id, limit)).forEach((v) => {
+        v.body.forEach((e) => {
+          if(e.text) {
+            response.push({
+              answer: e.text,
+              date: v.createdAt.toLocaleString(),
+              unit: v.unit
+            })
+          }
+        })
+      })
+
       return response;
     } catch (error) {
       throw new InternalServerErrorException(error);
