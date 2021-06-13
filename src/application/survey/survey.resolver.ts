@@ -433,6 +433,33 @@ export class SurveyResolver {
       throw new InternalServerErrorException(error);
     }
   }
+  
+  @Query(of => [EssayAnswer])
+  @UseGuards(UserGuard)
+  async getEssayAnswersByFrontdesk(
+    @Args('limit', { type: () => Number, defaultValue: 10 }) limit: number,
+    @Context('user') { _id }: User
+  )
+  {
+    try {
+      let response: EssayAnswer[] = [];
+      (await this.surveyService.getEssayAnswersByFrontdesk(_id, limit)).forEach((v) => {
+        v.body.forEach((e) => {
+          if(e.text) {
+            response.push({
+              answer: e.text,
+              date: v.createdAt.toLocaleString(),
+              unit: v.unit
+            })
+          }
+        })
+      })
+
+      return response;
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
 
 }
 
