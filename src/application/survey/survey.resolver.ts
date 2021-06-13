@@ -175,40 +175,22 @@ export class SurveyResolver {
     @Args('isAccumulative', { type: () => Boolean, defaultValue: false }) isAccumulative: boolean,
   ) {
     try {
-      const data = await this.surveyService.calculateQuestionnareUnit(id, range);
-
-      const unitName = data.length !=0 ? data[0].unit : null;
-
-      data.forEach((v) => {
-        delete v.unit
-      });
-
       if (!range) {
         if (isAccumulative) {
-          let total_average: number = 0;
-          let total_survey: number = 0
-          const count = data[0].count;
-
-          data.forEach((value) => {
-            total_average += (value.averageAnswer * value.count)
-            total_survey += value.count
-          });
+          const data = await this.surveyService.calculateQuestionnareUnitAccumulative(id, range);
 
           const response: CalculateAverageUnitGlobal = {
-            unitName,
-            data: [
-              {
-                averageAnswer: total_average / total_survey,
-                count
-              }
-            ]
+            unitName: data[0].unit,
+            data
           }
 
-          return response;
+          return response
         }
 
+        const data = await this.surveyService.calculateQuestionnareUnit(id, range);
+
         const response: CalculateAverageUnitGlobal = {
-          unitName,
+          unitName: data[0].unit,
           data
         }
 
@@ -216,58 +198,24 @@ export class SurveyResolver {
       }
 
       if(isAccumulative) {
-        let response_obj: object = {};
-
-        data.forEach((value) => {
-          if (value.date) {
-            if(!(value.date in response_obj)) {
-              response_obj[value.date] = [{
-                averageAnswer: value.averageAnswer * value.count,
-                count: value.count
-              }];
-            }
-            response_obj[value.date].push({
-              averageAnswer: value.averageAnswer * value.count,
-              count: value.count
-            });
-          }
-        });
-
-        Object.keys(response_obj).forEach((e) => {
-          let sum_answer = 0;
-          let sum_count = 0;
-          response_obj[e].forEach((v) => {
-            sum_answer += v.averageAnswer
-            sum_count += v.count
-          });
-
-          response_obj[e] = {
-            averageAnswer: sum_answer / sum_count,
-            count: sum_count
-          }
-        });
+        const data = await this.surveyService.calculateQuestionnareUnitAccumulative(id, range);
         
         let response: CalculateAverageUnitGlobal = {
-          unitName,
-          data: []
-        };
+          unitName: data[0].unit,
+          data
+        }
 
-        Object.keys(response_obj).forEach((e) => {
-          response.data.push({
-            date: e,
-            averageAnswer: response_obj[e].averageAnswer,
-            count: response_obj[e].count
-          })
-        });
-
-        return response;
+        return response
       }
+
+      const data = await this.surveyService.calculateQuestionnareUnit(id, range);
 
       const response: CalculateAverageUnitGlobal = {
-        unitName,
-        data: data
+        unitName: data[0].unit,
+        data
       }
-      return response
+
+      return response;
     } catch (error) {
       throw new InternalServerErrorException(error);
     }
