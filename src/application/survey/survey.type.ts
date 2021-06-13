@@ -125,6 +125,9 @@ export class AverageType {
   @Field(type => String, { nullable: true })
   date?: string;
 
+  @Field(type => Number, { nullable: true })
+  order?: number;
+
 }
 @ObjectType()
 export class CalculateAverageUnitGlobal {
@@ -175,10 +178,13 @@ export class EssayAnswer {
   answer: string;
 
   @Field(type => Unit)
-  unit: string;
+  unit?: string;
 
   @Field(type => String)
   date: string;
+
+  @Field(type => User)
+  user?: User;
 
 }
 
