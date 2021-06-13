@@ -5,7 +5,8 @@ import { Survey, SurveyDocument } from "src/model/survey.model";
 import { Unit, UnitDocument } from "src/model/unit.model";
 import { DateRange } from "src/utils/types/date-range.type";
 import { Types } from 'mongoose'
-import { CalculateAverage, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBody, SurveyBodyPayload } from "./survey.type";
+import { CalculateAverage, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBody, SurveyBodyPayload, SurveyLinkStatusResponse } from "./survey.type";
+import { RedisService } from "nestjs-redis";
 
 const ObjectId = Types.ObjectId
 // const ISODate = Types.Is
@@ -15,10 +16,15 @@ export class SurveyService {
   constructor(
     @InjectModel(Survey.name) private readonly surveyModel: Model<SurveyDocument>,
     @InjectModel(Unit.name) private readonly unitModel: Model<UnitDocument>,
+    private readonly redisService: RedisService
   ) {}
+
+  private redisClient = this.redisService.getClient()
 
   async create(survey: Survey): Promise<Survey> {
     try {
+      // const surveys = await this.
+
       return await this.surveyModel.create(survey)
     } catch (error) {
       throw new InternalServerErrorException(error)
@@ -101,6 +107,98 @@ export class SurveyService {
         todayTotal: essayToday.map(val => val.question.length > 0).length,
         yesterdayTotal: essayYesterday.map(val => val.question.length > 0).length
       }
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
+  async checkNoAntrianRedis(noAntrian: string) {
+    const key = await this.redisClient.get(noAntrian)
+
+    if (!key)
+      throw new BadRequestException('Link tidak ditemukan')
+    
+    return true
+  }
+
+  async removeNoAntrianFromRedis(key: string) {
+    try {
+      await this.redisClient.set(key, 'false')
+      return true
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
+  async getNoAntrianStatus(): Promise<SurveyLinkStatusResponse[]> {
+    try {
+      const date = new Date()
+      const dateString = `/${date.getFullYear()}${date.getMonth() + 1}${date.getDate()}/`
+
+      let checker: boolean = true
+      let num = 1
+      const noAntrianArray: Array<SurveyLinkStatusResponse> = []
+      while (checker) {
+        const surveyLinkOnRedis = await this.redisClient.get(dateString + num)
+        if (surveyLinkOnRedis !== null) {
+          noAntrianArray.push({ link: dateString + num, status: Boolean(surveyLinkOnRedis) ? true : Boolean(surveyLinkOnRedis) })
+          num++
+        } else {
+          checker = false
+        }
+      }
+
+      return noAntrianArray
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
+  async getNoAntrian(unit: string) {
+    const date = new Date()
+    try {
+      const surveys = await this.surveyModel.aggregate([{
+        $lookup: {
+            from: 'users',
+            localField: 'user',
+            foreignField: '_id',
+            as: 'user'
+        }
+      }, {
+          $unwind: {
+              path: "$user",
+          }
+      }, {
+          $match: {
+              "user.unit": ObjectId(unit),
+              "createdAt": {
+                  $gt: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 8, 0)
+              }
+          }
+      }])
+
+      const dateString = `/${date.getFullYear()}${date.getMonth() + 1}${date.getDate()}/`
+      let length = surveys.length + 1
+      let checker = true
+      while (checker) {
+        if (await this.redisClient.get(dateString + length)) {
+          length++
+        } else {
+          checker = false
+          break
+        }
+      }
+
+      const link = dateString + length
+      await this.redisClient.set(
+        link, 
+        String(
+          Math.floor(
+            Number(new Date()) / 1000
+          )
+        )
+      )
+      return link
     } catch (error) {
       throw new InternalServerErrorException(error)
     }
@@ -251,7 +349,7 @@ export class SurveyService {
         .find({
           $and: [
             { "user": user },
-            { createdAt: { $gte: String(range.from), $lte: String(range.to) } }
+            { createdAt: { $gte: new Date(range.from), $lte: new Date(range.to) } }
           ] 
         })
         .sort({ 'createdAt': sort })
@@ -262,40 +360,940 @@ export class SurveyService {
     }
   }
 
-  async calculateAverage(user?: string, includeData: boolean = false): Promise<CalculateAverage> {
+  async calculateAverageFrontdesk(user?: string, range?: DateRange) {
     try {
-      const survey = await this.surveyModel.find({
-        user
-      }).populate([{
-        path: 'body.answer',
-        model: 'SurveyAnswer'
-      }, {
-        path: 'body.question',
-        model: 'SurveyQuestion'
-      }]).select(['body']);
-
-      let total: number[] = []
-      const average = survey.map(s => {
-        const body: SurveyBody[] = s.body;
-        // console.log(body)
-        return body;
-      }).forEach((survey: any[]) => {
-        let surveyTotal = 0
-        survey.forEach(s => {
-          surveyTotal += s.answer.value;
-        })
-        total.push(surveyTotal / (survey.length - 1))
-      })
-      
-      if (total.length > 0) {
-        return {
-          totalSurvey: total.length,
-          average: total.reduce((x, y) => (x + y) / total.length)
-        }
+      if (!range) {
+        const questionnares_mean = await this.surveyModel.aggregate([
+          {
+            $lookup: {
+              from: "users",
+              localField: "user",
+              foreignField: "_id",
+              as: "user"
+            }
+          },
+          {
+            $unwind: "$user"
+          },
+          {
+            $match: {
+              "user._id": ObjectId(user)
+            }
+          },
+          {
+            $unwind: "$body",
+          },
+          {
+            $group: {
+              _id: {
+                _id: "$body.question",
+                user: "$user"
+              },
+              answers: {
+                $push: "$body.answer"
+              },
+              total: {
+                $sum: 1
+              }
+            }
+          },
+          {
+            $unwind: "$answers"
+          },
+          {
+            $lookup: {
+              from: "surveyquestions",
+              localField: "_id._id",
+              foreignField: "_id",
+              as: "question"
+            }
+          },
+          {
+            $match: {
+              "question.type": {
+                $eq: "KUESIONER"
+              }
+            }
+          },
+          {
+            $lookup: {
+              from: "surveyanswers",
+              localField: "answers",
+              foreignField: "_id",
+              as: "answers"
+            }
+          },
+          {
+            $unwind: "$answers"
+          },
+          {
+            $group: {
+              _id: {
+                _id: "$_id",
+                total: "$total",
+                user: "$user"
+              },
+              averageAnswer: {
+                $avg: "$answers.value"
+              },
+              question: {
+                $first: "$question.question"
+              }
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              count: "$_id.total",
+              user: "$_id._id.user",
+              surveyQuestion: {
+                $first: "$question"
+              },
+              averageAnswer: 1
+            }
+          }
+        ]);
+        
+        return questionnares_mean;
       }
-      throw new BadRequestException('Kamu belum memiliki survey penilaian')
+
+      const questionnares_mean = await this.surveyModel.aggregate([
+        {
+          $match: {
+            createdAt: {
+              $gte: new Date(range.from),
+              $lte: new Date(range.to)
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user"
+          }
+        },
+        {
+          $unwind: "$user"
+        },
+        {
+          $match: {
+            "user._id": ObjectId(user)
+          }
+        },
+        {
+          $unwind: "$body",
+        },
+        {
+          $group: {
+            _id: {
+              _id: "$body.question",
+              month: { $month: "$createdAt" },
+              day: { $dayOfMonth: "$createdAt" },
+              year: { $year: "$createdAt" },
+              user: "$user"
+            },
+            answers: {
+              $push: "$body.answer"
+            },
+            total: {
+              $sum: 1
+            }
+          }
+        },
+        {
+          $unwind: "$answers"
+        },
+        {
+          $lookup: {
+            from: "surveyquestions",
+            localField: "_id._id",
+            foreignField: "_id",
+            as: "question"
+          }
+        },
+        {
+          $match: {
+            "question.type": {
+              $eq: "KUESIONER"
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: "surveyanswers",
+            localField: "answers",
+            foreignField: "_id",
+            as: "answers"
+          }
+        },
+        {
+          $unwind: "$answers"
+        },
+        {
+          $group: {
+            _id: {
+              _id: "$_id",
+              total: "$total",
+              month: "$month",
+              day: "$day",
+              year: "$year",
+              user: "$user"
+            },
+            averageAnswer: {
+              $avg: "$answers.value"
+            },
+            question: {
+              $first: "$question.question"
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            count: "$_id.total",
+            surveyQuestion: {
+              $first: "$question"
+            },
+            date: {
+              $concat: [
+                {
+                  $toString: "$_id._id.year"
+                }, 
+                "-", 
+                {
+                  $toString: "$_id._id.month"
+                },
+                "-", 
+                {
+                  $toString: "$_id._id.day"
+                },
+              ]
+            },
+            user: "$_id._id.user",
+            averageAnswer: 1
+          }
+        }
+      ]);
+
+      return questionnares_mean;
     } catch (error) {
       throw new InternalServerErrorException(error)
+    }
+  }
+
+  async calculateAverageFrontdeskAccumulative(user?: string, range?: DateRange) {
+    try {
+      if (!range) {
+        const questionnares_mean = await this.surveyModel.aggregate([
+          {
+            $lookup: {
+              from: "users",
+              localField: "user",
+              foreignField: "_id",
+              as: "user"
+            }
+          },
+          {
+            $unwind: "$user"
+          },
+          {
+            $match: {
+              "user._id": ObjectId(user)
+            }
+          },
+          {
+            $unwind: "$body",
+          },
+          {
+            $group: {
+              _id: {
+                _id: "$body.question",
+                user: "$user"
+              },
+              answers: {
+                $push: "$body.answer"
+              },
+              total: {
+                $sum: 1
+              }
+            }
+          },
+          {
+            $unwind: "$answers"
+          },
+          {
+            $lookup: {
+              from: "surveyquestions",
+              localField: "_id._id",
+              foreignField: "_id",
+              as: "question"
+            }
+          },
+          {
+            $match: {
+              "question.type": {
+                $eq: "KUESIONER"
+              }
+            }
+          },
+          {
+            $lookup: {
+              from: "surveyanswers",
+              localField: "answers",
+              foreignField: "_id",
+              as: "answers"
+            }
+          },
+          {
+            $unwind: "$answers"
+          },
+          {
+            $group: {
+              _id: {
+                _id: "$_id",
+                total: "$total",
+                user: "$user"
+              },
+              averageAnswer: {
+                $avg: "$answers.value"
+              },
+              question: {
+                $first: "$question.question"
+              }
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              count: "$_id.total",
+              user: "$_id._id.user",
+              surveyQuestion: {
+                $first: "$question"
+              },
+              averageAnswer: 1
+            }
+          },
+          {
+            $group: {
+              _id: "$user",
+              questionCount: {
+                $sum: "$count"
+              },
+              totalQuestions: {
+                $sum: 1
+              },
+              averageAnswer: {
+                $avg: "$averageAnswer"
+              },
+              questions: {
+                $push: "$surveyQuestion"
+              },
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              user: "$_id",
+              count: {
+                $divide: [ "$questionCount", "$totalQuestions" ]
+              },
+              averageAnswer: 1
+            }
+          }
+        ]);
+        
+        return questionnares_mean;
+      }
+
+      const questionnares_mean = await this.surveyModel.aggregate([
+        {
+          $match: {
+            createdAt: {
+              $gte: new Date(range.from),
+              $lte: new Date(range.to)
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user"
+          }
+        },
+        {
+          $unwind: "$user"
+        },
+        {
+          $match: {
+            "user._id": ObjectId(user)
+          }
+        },
+        {
+          $unwind: "$body",
+        },
+        {
+          $group: {
+            _id: {
+              _id: "$body.question",
+              month: { $month: "$createdAt" },
+              day: { $dayOfMonth: "$createdAt" },
+              year: { $year: "$createdAt" },
+              user: "$user"
+            },
+            answers: {
+              $push: "$body.answer"
+            },
+            total: {
+              $sum: 1
+            }
+          }
+        },
+        {
+          $unwind: "$answers"
+        },
+        {
+          $lookup: {
+            from: "surveyquestions",
+            localField: "_id._id",
+            foreignField: "_id",
+            as: "question"
+          }
+        },
+        {
+          $match: {
+            "question.type": {
+              $eq: "KUESIONER"
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: "surveyanswers",
+            localField: "answers",
+            foreignField: "_id",
+            as: "answers"
+          }
+        },
+        {
+          $unwind: "$answers"
+        },
+        {
+          $group: {
+            _id: {
+              _id: "$_id",
+              total: "$total",
+              month: "$month",
+              day: "$day",
+              year: "$year",
+              user: "$user"
+            },
+            averageAnswer: {
+              $avg: "$answers.value"
+            },
+            question: {
+              $first: "$question.question"
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            count: "$_id.total",
+            surveyQuestion: {
+              $first: "$question"
+            },
+            date: {
+              $concat: [
+                {
+                  $toString: "$_id._id.year"
+                }, 
+                "-", 
+                {
+                  $toString: "$_id._id.month"
+                },
+                "-", 
+                {
+                  $toString: "$_id._id.day"
+                },
+              ]
+            },
+            user: "$_id._id.user",
+            averageAnswer: 1
+          }
+        },
+        {
+          $group: {
+            _id: "$date",
+            questionCount: {
+              $sum: "$count"
+            },
+            totalQuestions: {
+              $sum: 1
+            },
+            averageAnswer: {
+              $avg: "$averageAnswer"
+            },
+            questions: {
+              $push: "$surveyQuestion"
+            },
+            user: {
+              $first: "$user"
+            },
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            date: "$_id",
+            count: {
+              $divide: [ "$questionCount", "$totalQuestions" ]
+            },
+            averageAnswer: 1,
+            user: 1
+          }
+        },
+        {
+          $sort: {
+            date: 1
+          }
+        },
+      ]);
+
+      return questionnares_mean;
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
+  async calculateQuestionnareGlobal(range?: DateRange) {
+    try {
+      if (!range) {
+        const questionnares_mean = await this.surveyModel.aggregate([
+          {
+            $unwind: "$body",
+          },
+          {
+            $group: {
+              _id: "$body.question",
+              answers: {
+                $push: "$body.answer"
+              },
+              total: {
+                $sum: 1
+              }
+            }
+          },
+          {
+            $unwind: "$answers"
+          },
+          {
+            $lookup: {
+              from: "surveyquestions",
+              localField: "_id",
+              foreignField: "_id",
+              as: "question"
+            }
+          },
+          {
+            $match: {
+              "question.type": {
+                $eq: "KUESIONER"
+              }
+            }
+          },
+          {
+            $lookup: {
+              from: "surveyanswers",
+              localField: "answers",
+              foreignField: "_id",
+              as: "answers"
+            }
+          },
+          {
+            $unwind: "$answers"
+          },
+          {
+            $group: {
+              _id: {
+                _id: "$_id",
+                total: "$total"
+              },
+              averageAnswer: {
+                $avg: "$answers.value"
+              },
+              question: {
+                $first: "$question.question"
+              }
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              count: "$_id.total",
+              surveyQuestion: {
+                $first: "$question"
+              },
+              averageAnswer: 1
+            }
+          }
+        ]);
+        
+        return questionnares_mean;
+      }
+
+      const questionnares_mean = await this.surveyModel.aggregate([
+        {
+          $match: {
+            createdAt: {
+              $gte: new Date(range.from),
+              $lte: new Date(range.to)
+            }
+          }
+        },
+        {
+          $unwind: "$body",
+        },
+        {
+          $group: {
+            _id: {
+              _id: "$body.question",
+              month: { $month: "$createdAt" },
+              day: { $dayOfMonth: "$createdAt" },
+              year: { $year: "$createdAt" }
+            },
+            answers: {
+              $push: "$body.answer"
+            },
+            total: {
+              $sum: 1
+            }
+          }
+        },
+        {
+          $unwind: "$answers"
+        },
+        {
+          $lookup: {
+            from: "surveyquestions",
+            localField: "_id._id",
+            foreignField: "_id",
+            as: "question"
+          }
+        },
+        {
+          $match: {
+            "question.type": {
+              $eq: "KUESIONER"
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: "surveyanswers",
+            localField: "answers",
+            foreignField: "_id",
+            as: "answers"
+          }
+        },
+        {
+          $unwind: "$answers"
+        },
+        {
+          $group: {
+            _id: {
+              _id: "$_id",
+              total: "$total",
+              month: "$month",
+              day: "$day",
+              year: "$year"
+            },
+            averageAnswer: {
+              $avg: "$answers.value"
+            },
+            question: {
+              $first: "$question.question"
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            count: "$_id.total",
+            surveyQuestion: {
+              $first: "$question"
+            },
+            date: {
+              $concat: [
+                {
+                  $toString: "$_id._id.year"
+                }, 
+                "-", 
+                {
+                  $toString: "$_id._id.month"
+                },
+                "-", 
+                {
+                  $toString: "$_id._id.day"
+                },
+              ]
+            },
+            averageAnswer: 1
+          }
+        }
+      ]);
+
+      return questionnares_mean;
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  async calculateQuestionnareUnit(unit?: string, range?: DateRange) {
+    try {
+      if (!range) {
+        const questionnares_mean = await this.surveyModel.aggregate([
+          {
+            $lookup: {
+              from: "users",
+              localField: "user",
+              foreignField: "_id",
+              as: "user"
+            }
+          },
+          {
+            $unwind: "$user"
+          },
+          {
+            $match: {
+              "user.unit": ObjectId(unit)
+            }
+          },
+          {
+            $lookup: {
+              from: "units",
+              localField: "user.unit",
+              foreignField: "_id",
+              as: "unit"
+            }
+          },
+          {
+            $unwind: "$unit"
+          },
+          {
+            $unwind: "$body",
+          },
+          {
+            $group: {
+              _id: {
+                _id: "$body.question",
+                unit: "$unit.name"
+              },
+              answers: {
+                $push: "$body.answer"
+              },
+              total: {
+                $sum: 1
+              }
+            }
+          },
+          {
+            $unwind: "$answers"
+          },
+          {
+            $lookup: {
+              from: "surveyquestions",
+              localField: "_id._id",
+              foreignField: "_id",
+              as: "question"
+            }
+          },
+          {
+            $match: {
+              "question.type": {
+                $eq: "KUESIONER"
+              }
+            }
+          },
+          {
+            $lookup: {
+              from: "surveyanswers",
+              localField: "answers",
+              foreignField: "_id",
+              as: "answers"
+            }
+          },
+          {
+            $unwind: "$answers"
+          },
+          {
+            $group: {
+              _id: {
+                _id: "$_id",
+                total: "$total",
+                unit: "$unit"
+              },
+              averageAnswer: {
+                $avg: "$answers.value"
+              },
+              question: {
+                $first: "$question.question"
+              }
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              count: "$_id.total",
+              unit: "$_id._id.unit",
+              surveyQuestion: {
+                $first: "$question"
+              },
+              averageAnswer: 1
+            }
+          }
+        ]);
+        
+        return questionnares_mean;
+      }
+
+      const questionnares_mean = await this.surveyModel.aggregate([
+        {
+          $match: {
+            createdAt: {
+              $gte: new Date(range.from),
+              $lte: new Date(range.to)
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user"
+          }
+        },
+        {
+          $unwind: "$user"
+        },
+        {
+          $match: {
+            "user.unit": ObjectId(unit)
+          }
+        },
+        {
+          $lookup: {
+            from: "units",
+            localField: "user.unit",
+            foreignField: "_id",
+            as: "unit"
+          }
+        },
+        {
+          $unwind: "$unit"
+        },
+        {
+          $unwind: "$body",
+        },
+        {
+          $group: {
+            _id: {
+              _id: "$body.question",
+              month: { $month: "$createdAt" },
+              day: { $dayOfMonth: "$createdAt" },
+              year: { $year: "$createdAt" },
+              unit: "$unit.name"
+            },
+            answers: {
+              $push: "$body.answer"
+            },
+            total: {
+              $sum: 1
+            }
+          }
+        },
+        {
+          $unwind: "$answers"
+        },
+        {
+          $lookup: {
+            from: "surveyquestions",
+            localField: "_id._id",
+            foreignField: "_id",
+            as: "question"
+          }
+        },
+        {
+          $match: {
+            "question.type": {
+              $eq: "KUESIONER"
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: "surveyanswers",
+            localField: "answers",
+            foreignField: "_id",
+            as: "answers"
+          }
+        },
+        {
+          $unwind: "$answers"
+        },
+        {
+          $group: {
+            _id: {
+              _id: "$_id",
+              total: "$total",
+              month: "$month",
+              day: "$day",
+              year: "$year",
+              unit: "$unit"
+            },
+            averageAnswer: {
+              $avg: "$answers.value"
+            },
+            question: {
+              $first: "$question.question"
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            count: "$_id.total",
+            surveyQuestion: {
+              $first: "$question"
+            },
+            date: {
+              $concat: [
+                {
+                  $toString: "$_id._id.year"
+                }, 
+                "-", 
+                {
+                  $toString: "$_id._id.month"
+                },
+                "-", 
+                {
+                  $toString: "$_id._id.day"
+                },
+              ]
+            },
+            unit: "$_id._id.unit",
+            averageAnswer: 1
+          }
+        }
+      ]);
+
+      return questionnares_mean;
+    } catch (error) {
+      throw new InternalServerErrorException(error);
     }
   }
 
@@ -342,42 +1340,29 @@ export class SurveyService {
     if (!range) {
       const questionnares_mean = await this.surveyModel.aggregate([
         {
-          $lookup: {
-            from: "users",
-            let: {
-              "user": "$_id"
+          $unwind: "$body",
+        },
+        {
+          $group: {
+            _id: "$body.question",
+            answers: {
+              $push: "$body.answer"
             },
-            as: "user",
-            pipeline
+            total: {
+              $sum: 1
+            }
           }
         },
         {
-          $unwind: "$user"
-        },
-        {
-          $unwind: "$body",
+          $unwind: "$answers"
         },
         {
           $lookup: {
             from: "surveyquestions",
-            localField: "body.question",
+            localField: "_id",
             foreignField: "_id",
             as: "question"
           }
-        },
-        {
-          $lookup: {
-            from: "surveyanswers",
-            localField: "body.answer",
-            foreignField: "_id",
-            as: "answer"
-          }
-        },
-        {
-          $unwind: "$question"
-        },
-        {
-          $unwind: "$answer"
         },
         {
           $match: {
@@ -387,28 +1372,28 @@ export class SurveyService {
           }
         },
         {
-          $group: {
-            _id: "$question.question",
-            averageAnswer: {
-              $avg: "$answer.value"
-            },
-            count: {
-              $sum: 1
-            }
+          $lookup: {
+            from: "surveyanswers",
+            localField: "answers",
+            foreignField: "_id",
+            as: "answers"
           }
         },
         {
-          $project: {
-            _id: 0,
-            surveyQuestion: "$_id",
-            averageAnswer: "$averageAnswer",
-            sum: 1,
-            count: 1
-          },
+          $unwind: "$answers"
         },
         {
-          $sort: {
-            date: 1
+          $group: {
+            _id: {
+              _id: "$_id",
+              total: "$total"
+            },
+            value: {
+              $avg: "$answers.value"
+            },
+            question: {
+              $first: "$question.question"
+            }
           }
         },
       ]);
@@ -514,143 +1499,29 @@ export class SurveyService {
   }
 
   async getBestUnit(limit: number, sort: number = 0, range: DateRange) {
-    console.log({$gte: new Date(range.from),
-                $lte: new Date(range.from.setDate(range.from.getDate() + 1))})
+    // console.log({$gte: new Date(range.from),
+    //             $lte: new Date(range.from.setDate(range.from.getDate() + 1))})
     try {
-      sort = sort == 0 ? 1 : -1
 
-      const surveys = await this.surveyModel.aggregate(
-        [ {
+      const surveys = await this.surveyModel.aggregate([
+        {
           $match: {
-              "createdAt": {
-                $gte: new Date(range.from),
-                $lte: new Date(range.to.setDate(range.to.getDate() + 1))
-              }
+            createdAt: {
+              $gte: new Date(range.from),
+              $lte: new Date(range.to)
+            }
           }
-        }, {
-          $lookup: {
-              from: 'users',
-              let: {
-                  "user": "$_id"
-              },
-              as: "user",
-              pipeline: [{
-                  $project: {
-                      "_id": 0,
-                      "password": 0
-                  }
-              }]
-          }
-      }, {
-          $unwind: {
-              path: "$user",
-          }
-      }, {
-          $lookup: {
-              from: 'units',
-              localField: 'user.unit',
-              foreignField: '_id',
-              as: 'unit'
-          }
-      }, {
-          $unwind: {
-              path: "$unit",
-          }
-      }, {
-          $lookup: {
-              "from": "roles",
-              "localField": "user.role",
-              "foreignField": "_id",
-              "as": "role"
-          }
-      }, {
-          $unwind: {
-              path: "$role",
-          }
-      }, {
-          $match: {
-              "role.name": "FRONT DESK"
-          }
-      }, {
-          $unwind: {
-              path: "$body"
-          }
-      }, {
-          $lookup: {
-              "from": "surveyquestions",
-              "localField": "body.question",
-              "foreignField": "_id",
-              "as": "question"
-          }
-      }, {
-          $lookup: {
-              "from": "surveyanswers",
-              "localField": "body.answer",
-              "foreignField": "_id",
-              "as": "answer"
-          }
-      }, {
-          $unwind: {
-              path: "$answer",
-          }
-      }, {
-          $group: {
-              "_id": "$user",
-              "averageAnswer": {
-                  "$avg": "$answer.value"
-              },
-              "unit": {
-                  "$first": "$unit"
-              },
-              "count": {
-                  "$sum": 1
-              }
-          }
-      }, {
-        $sort: {
-          "averageAnswer": sort
-        }
-      }, {
-          $project: {
-              "_id": 0,
-              "unit": {
-                  "name": "$unit.name",
-              },
-              "averageAnswer": "$averageAnswer",
-              "count": 1,
-          }
-      }, {
-          $limit: limit
-      }]
-      )
-
-      return surveys
-    } catch (error) {
-      throw new InternalServerErrorException(error)
-    }
-  }
-
-  async getBestFrontDeskScores() {
-    try {
-      // const sort = sortBy == 0 ? -1 : sortBy;
-    
-      const current_month_data = await this.surveyModel.aggregate([
+        },
         {
           $lookup: {
             from: "users",
-            let: {
-              user: "$_id"
-            },
-            pipeline: [
-              {
-                $project: {
-                  _id: 0,
-                  password: 0
-                }
-              }
-            ],
+            localField: "user",
+            foreignField: "_id",
             as: "user"
           }
+        },
+        {
+          $unwind: "$user"
         },
         {
           $lookup: {
@@ -661,10 +1532,113 @@ export class SurveyService {
           }
         },
         {
+          $unwind: "$unit"
+        },
+        {
+          $unwind: "$body"
+        },
+        {
+          $group: {
+            _id: {
+              _id: "$body.question",
+              unit: "$unit",
+            },
+            answers: {
+              $push: "$body.answer"
+            },
+          }
+        },
+        {
+          $unwind: "$answers"
+        },
+        {
+          $lookup: {
+            from: "surveyquestions",
+            localField: "_id._id",
+            foreignField: "_id",
+            as: "question"
+          }
+        },
+        {
+          $match: {
+            "question.type": {
+              $eq: "KUESIONER"
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: "surveyanswers",
+            localField: "answers",
+            foreignField: "_id",
+            as: "answers"
+          }
+        },
+        {
+          $unwind: "$answers"
+        },
+        {
+          $group: {
+            _id: "$_id.unit",
+            averageAnswer: {
+              $avg: "$answers.value"
+            },
+            total: {
+              $sum: 1
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            unit: "$_id",
+            averageAnswer: 1,
+            count: {
+              $ceil: { $divide: [ "$total", 7 ] }
+            }
+          }
+        },
+        {
+          $sort: {
+            averageAnswer: sort == 0 ? -1 : sort
+          }
+        },
+        {
+          $limit: limit
+        }
+      ]);
+
+      return surveys;
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
+  async getBestFrontDeskScores() {
+    try {
+    
+      const current_month_data = await this.surveyModel.aggregate([
+        {
           $match: {
             $expr: {
               $eq: [{ $month: "$createdAt" },new Date().getMonth()+1]
             }
+          }
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user"
+          }
+        },
+        {
+          $lookup: {
+            from: "units",
+            localField: "user.unit",
+            foreignField: "_id",
+            as: "unit"
           }
         },
         {
@@ -690,26 +1664,33 @@ export class SurveyService {
           }
         },
         {
-          $unwind: "$body",
+          $unwind: "$body"
+        },
+        {
+          $group: {
+            _id: {
+              _id: "$body.question",
+              user: "$user",
+              unit: "$unit._id",
+            },
+            answers: {
+              $push: "$body.answer"
+            },
+            total: {
+              $sum: 1
+            }
+          }
+        },
+        {
+          $unwind: "$answers"
         },
         {
           $lookup: {
             from: "surveyquestions",
-            localField: "body.question",
+            localField: "_id._id",
             foreignField: "_id",
             as: "question"
           }
-        },
-        {
-          $lookup: {
-            from: "surveyanswers",
-            localField: "body.answer",
-            foreignField: "_id",
-            as: "answer"
-          }
-        },
-        {
-          $unwind: "$answer"
         },
         {
           $match: {
@@ -719,44 +1700,171 @@ export class SurveyService {
           }
         },
         {
+          $lookup: {
+            from: "surveyanswers",
+            localField: "answers",
+            foreignField: "_id",
+            as: "answers"
+          }
+        },
+        {
+          $unwind: "$answers"
+        },
+        {
           $group: {
-            _id: "$user",
+            _id: {
+              user: "$_id.user",
+              unit: "$_id.unit"
+            },
             averageAnswer: {
-              "$avg": "$answer.value"
+              $avg: "$answers.value"
             },
-            unit: {
-              $first: "$unit"
-            },
-            count: {
+            total: {
               $sum: 1
             }
           }
         },
-        // {
-        //   $sort: {
-        //     averageAnswer: sort
-        //   }
-        // },
         {
           $project: {
             _id: 0,
-            user: {
-              fullname: "$_id.fullname",
-              unit: "$unit",
-              email: "$_id.email"
+            count: {
+              $ceil: { $divide: [ "$total", 7 ] }
             },
-            averageAnswer: "$averageAnswer",
-            count: 1,
+            user: {
+              fullname: "$_id.user.fullname",
+              email: "$_id.user.email",
+              photo: "$_id.user.photo",
+              unit: "$_id.unit"
+            },
+            averageAnswer: 1
           }
         },
         {
-          $limit: 1,
+          $sort: {
+            averageAnswer: 1
+          }
         },
+        {
+          $limit: 1
+        }
       ]);
 
-      return current_month_data[0];
+      return current_month_data;
     } catch (error) {
       throw new InternalServerErrorException(error);
+    }
+  }
+
+  async getEssayAnswers(sort?: number, limit?: number) {
+    try {
+
+      return await this.surveyModel.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user"
+          }
+        },
+        {
+          $lookup: {
+            from: "units",
+            localField: "user.unit",
+            foreignField: "_id",
+            as: "unit"
+          }
+        },
+        {
+          $match: {
+            body: {
+              $elemMatch: {
+                text: { $exists: true }
+              }
+            }
+          }
+        },
+        {
+          $replaceRoot: {
+            newRoot: {
+              $mergeObjects: [ { $arrayElemAt: [ "$user", 0 ] }, "$$ROOT" ]
+            }
+          }
+        },
+        {
+          $project: {
+            user: 0
+          }
+        }
+      ])
+      .sort({
+        createdAt: sort == 0 ? -1 : sort
+      })
+      .limit(limit);
+
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  async getEssayAnswersByFrontdesk(id?: string, limit?: number) {
+    try {
+      return await this.surveyModel.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user"
+          }
+        },
+        {
+          $match: {
+            body: {
+              $elemMatch: {
+                text: { $exists: true }
+              }
+            }
+          }
+        },
+        {
+          $unwind: "$user"
+        },
+        {
+          $lookup: {
+            from: "roles",
+            localField: "user.role",
+            foreignField: "_id",
+            as: "role"
+          }
+        },
+        {
+          $unwind: "$role"
+        },
+        {
+          $lookup: {
+            from: "units",
+            localField: "user.unit",
+            foreignField: "_id",
+            as: "unit"
+          }
+        },
+        {
+          $unwind: "$unit"
+        },
+        {
+          $match: {
+            "user._id": ObjectId(id),
+            "role.name": "FRONT DESK"
+          }
+        }
+      ])
+      .sort({
+        createdAt: 1
+      })
+      .limit(limit && limit > 0 ? limit : 10);
+    } catch (error) {
+      throw new InternalServerErrorException(error)
     }
   }
 

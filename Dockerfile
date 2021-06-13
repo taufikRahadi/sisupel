@@ -7,8 +7,10 @@ RUN yarn install
 COPY . .
 
 ENV PORT 8080
-ENV MONGODB_URI "mongodb+srv://s1SuP3LuT:gzMkPksMJgRbSe8N@sisupel.xqms0.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
+ENV MONGODB_URI "mongodb://sisupel:s3c12ET@172.16.37.145:27017/sisupel?authSource=admin&readPreference=primary&appname=MongoDB%20Compass&ssl=false"
 ENV JWT_SECRET "2GTPpGy6qGoR"
+ENV REDIS_HOST "172.16.37.145"
+ENV REDIS_PORT "6379"
 
 EXPOSE 8080
 

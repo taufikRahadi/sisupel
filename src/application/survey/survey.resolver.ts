@@ -16,7 +16,7 @@ import { Sort } from "src/utils/types/sort.enum";
 import { AuthenticationResolver } from "../authentication/authentication.resolver";
 import { UserService } from "../user/user.service";
 import { SurveyService } from "./survey.service";
-import { CalculateAverage, CreateSurveyPayload, SurveyResponse, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBodyResponse, AverageType, SortByEnum, AverageTypeUnit } from "./survey.type";
+import { CalculateAverage, CreateSurveyPayload, SurveyResponse, CalculateAverageUnitGlobal, CalculateEssayResponse, SurveyBodyResponse, AverageType, SortByEnum, AverageTypeUnit, EssayAnswer, SurveyLinkStatusResponse } from "./survey.type";
 
 const today = new Date()
 
@@ -33,11 +33,13 @@ export class SurveyResolver {
   @IsAllowTo('create-survey')
   async createSurvey(
     @Args() payload: CreateSurveyPayload,
+    @Args('noAntrian', { type: () => String, nullable: false }) noAntrian: string,
     @Context('user') { _id }: User
   ): Promise<Boolean> {
     try {
       const newSurvey = await this.surveyService.create({ 
         body: payload.body,
+        noAntrian,
         user: _id 
       })
 
@@ -47,16 +49,34 @@ export class SurveyResolver {
     }
   }
 
+  @Mutation(returns => Boolean)
+  @IsAllowTo('generate-link')
+  async createSurveyFromGeneratedLink(
+    @Args() payload: CreateSurveyPayload,
+    @Args('references', { type: () => String, nullable: false }) reference: string 
+  ) {
+    await this.surveyService.checkNoAntrianRedis(reference)
+    const [_, date, noAntrian] = reference.split('/')
+
+    const newSurvey = await this.surveyService.create({
+      body: payload.body,
+      user: (await this.userService.findByUsername('halo-ut@ut.ac.id'))._id,
+      noAntrian
+    })
+
+    await this.surveyService.removeNoAntrianFromRedis(reference)
+    return true
+  }
+
   @Query(returns => [SurveyResponse])
-  @UseGuards(UserGuard, PrivilegesGuard)
-  @IsAllowTo('read-self-survey')
+  @UseGuards(UserGuard)
   async getMySurvey(
     @Args('limit', { type: () => Number, nullable: true }) limit: number,
     @Context('user') { _id, unit }: User,
     @Args('range', { type: () => DateRange, nullable: false }) range: DateRange,
     @Args('sort', { type: () => Sort, defaultValue: Sort['asc'] }) sort: Sort
   ) {
-    const surveys = await this.surveyService.getMySurvey(_id, Sort[sort], limit, range)
+    const surveys = await this.surveyService.getMySurvey(_id, Sort[sort], limit, range);
     return surveys
   }
 
@@ -117,14 +137,33 @@ export class SurveyResolver {
     return await this.surveyService.calculateEssayUnit(unitId._id)
   }
 
-  @Query(returns => CalculateAverage)
+  @Query(returns => [AverageType])
   @UseGuards(UserGuard, PrivilegesGuard)
   @IsAllowTo('calculate-self-survey')
-  async calculateSelfSurvey(
-    @Context('user') { _id }: User
+  async calculateFrontdeskQuestionnare(
+    @Context('user') { _id }: User,
+    @Args('range', { type: () => DateRange, nullable: true }) range: DateRange,
+    @Args('isAccumulative', { type: () => Boolean, defaultValue: false}) isAccumulative: boolean,
   ) {
+    try {
 
-    return await this.surveyService.calculateAverage(_id)
+      if (!range) {
+        if (isAccumulative) {
+          return await this.surveyService.calculateAverageFrontdeskAccumulative(_id, range);
+        }
+
+        return await this.surveyService.calculateAverageFrontdesk(_id, range);
+      }
+
+      if(isAccumulative) {
+        return await this.surveyService.calculateAverageFrontdeskAccumulative(_id, range);
+      }
+
+      return await this.surveyService.calculateAverageFrontdesk(_id, range);
+
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
   }
 
   @Query(returns => CalculateAverageUnitGlobal)
@@ -136,21 +175,31 @@ export class SurveyResolver {
     @Args('isAccumulative', { type: () => Boolean, defaultValue: false }) isAccumulative: boolean,
   ) {
     try {
-      const data = await this.surveyService.calculateAverageUnitGlobal(id, range);
+      const data = await this.surveyService.calculateQuestionnareUnit(id, range);
+
+      const unitName = data.length !=0 ? data[0].unit : null;
+
+      data.forEach((v) => {
+        delete v.unit
+      });
 
       if (!range) {
         if (isAccumulative) {
           let total_average: number = 0;
+          let total_survey: number = 0
+          const count = data[0].count;
 
           data.forEach((value) => {
-            total_average += value.averageAnswer
+            total_average += (value.averageAnswer * value.count)
+            total_survey += value.count
           });
 
           const response: CalculateAverageUnitGlobal = {
-            unitName: "Contoh",
+            unitName,
             data: [
               {
-                averageAnswer: data.length != 0 ? total_average / data.length : 0
+                averageAnswer: total_average / total_survey,
+                count
               }
             ]
           }
@@ -159,7 +208,7 @@ export class SurveyResolver {
         }
 
         const response: CalculateAverageUnitGlobal = {
-          unitName: "Contoh",
+          unitName,
           data
         }
 
@@ -172,29 +221,42 @@ export class SurveyResolver {
         data.forEach((value) => {
           if (value.date) {
             if(!(value.date in response_obj)) {
-              response_obj[value.date] = [value.averageAnswer];
+              response_obj[value.date] = [{
+                averageAnswer: value.averageAnswer * value.count,
+                count: value.count
+              }];
             }
-            response_obj[value.date].push(value.averageAnswer);
+            response_obj[value.date].push({
+              averageAnswer: value.averageAnswer * value.count,
+              count: value.count
+            });
           }
         });
 
         Object.keys(response_obj).forEach((e) => {
-          let sum = 0;
+          let sum_answer = 0;
+          let sum_count = 0;
           response_obj[e].forEach((v) => {
-            sum += v
+            sum_answer += v.averageAnswer
+            sum_count += v.count
           });
-          response_obj[e] = sum / response_obj[e].length
+
+          response_obj[e] = {
+            averageAnswer: sum_answer / sum_count,
+            count: sum_count
+          }
         });
         
         let response: CalculateAverageUnitGlobal = {
-          unitName: "contoh",
+          unitName,
           data: []
         };
 
         Object.keys(response_obj).forEach((e) => {
           response.data.push({
             date: e,
-            averageAnswer: response_obj[e]
+            averageAnswer: response_obj[e].averageAnswer,
+            count: response_obj[e].count
           })
         });
 
@@ -202,7 +264,7 @@ export class SurveyResolver {
       }
 
       const response: CalculateAverageUnitGlobal = {
-        unitName: "Contoh",
+        unitName,
         data: data
       }
       return response
@@ -219,7 +281,81 @@ export class SurveyResolver {
     @Args('isAccumulative', { type: () => Boolean, defaultValue: false }) isAccumulative: boolean,
   ) {
     try {
-      return this.surveyService.calculateAverageUnitGlobal(null, range);
+      const data = await this.surveyService.calculateQuestionnareGlobal(range);
+      let sum = 0;
+
+      if (!range) {
+        if (isAccumulative) {
+          data.forEach((v) => {
+            sum += (v.averageAnswer * v.count)
+          })
+  
+          const response: CalculateAverageUnitGlobal = {
+            unitName: null,
+            data: [
+              {
+                averageAnswer: sum / (data.length * data[0].count),
+                count: data[0].count
+              }
+            ]
+          }
+  
+          return response;
+        }
+      }
+
+      if(isAccumulative) {
+        let response_obj: object = {};
+
+        data.forEach((value) => {
+          if (value.date) {
+            if(!(value.date in response_obj)) {
+              response_obj[value.date] = [{
+                averageAnswer: value.averageAnswer * value.count,
+                count: value.count
+              }];
+            }
+            response_obj[value.date].push({
+              averageAnswer: value.averageAnswer * value.count,
+              count: value.count
+            });
+          }
+        });
+
+        Object.keys(response_obj).forEach((e) => {
+          let sum_answer = 0;
+          let sum_count = 0;
+          response_obj[e].forEach((v) => {
+            sum_answer += v.averageAnswer
+            sum_count += v.count
+          });
+
+          response_obj[e] = {
+            averageAnswer: sum_answer / sum_count,
+            count: sum_count
+          }
+        });
+        
+        let response: CalculateAverageUnitGlobal = {
+          data: []
+        };
+
+        Object.keys(response_obj).forEach((e) => {
+          response.data.push({
+            date: e,
+            averageAnswer: response_obj[e].averageAnswer,
+            count: response_obj[e].count
+          })
+        });
+
+        return response;
+      }
+
+      const response: CalculateAverageUnitGlobal = {
+        unitName: null,
+        data
+      }
+      return response
     } catch (error) {
       throw new InternalServerErrorException(error);
     }
@@ -231,15 +367,15 @@ export class SurveyResolver {
   }
 
   @Query(returns => AverageType)
-  @UseGuards(UserGuard, PrivilegesGuard)
-  @IsAllowTo('calculate-global-survey')
+  @UseGuards(UserGuard)
+  // @IsAllowTo('calculate-global-survey')
   async getBestFrontDeskScores(
     // @Args('sortBy', { type: () => SortByEnum, defaultValue: 0 }) sortBy: SortByEnum,
   ) {
     try {
-      const data: AverageType = await this.surveyService.getBestFrontDeskScores();
-    
-      return data
+      const data: AverageType = (await this.surveyService.getBestFrontDeskScores())[0];
+      
+      return data;
     } catch (error) {
       throw new InternalServerErrorException(error);
     }
@@ -252,8 +388,77 @@ export class SurveyResolver {
     @Args('limit', { type: () => Number, defaultValue: 5 }) limit: number,
     @Args('range', { type: () => DateRange, defaultValue: { from: new Date(today.setMonth(today.getMonth() - 1)), to: new Date() } }) range: DateRange
   ) {
-    console.log(range)
     return await this.surveyService.getBestUnit(limit, sort, range)
+  }
+
+  @Mutation(returns => String)
+  @UseGuards(UserGuard, PrivilegesGuard)
+  @IsAllowTo('generate-link')
+  async generateSurveyLink(
+    @Context('user') { unit }: User
+  ) {
+    const u: any = unit
+    return await this.surveyService.getNoAntrian(u._id)
+  }
+
+  @Query(returns => [SurveyLinkStatusResponse])
+  @UseGuards(UserGuard, PrivilegesGuard)
+  async getSurveyLinkStatus() {
+    console.log(await this.surveyService.getNoAntrianStatus())
+    return await this.surveyService.getNoAntrianStatus()
+  }
+
+  @Query(returns => [EssayAnswer])
+  @UseGuards(UserGuard)
+  async getEssayAnswers(
+    @Args('sort', { type: () => Sort, defaultValue: 0 }) sort: Sort,
+    @Args('limit', { type: () => Number, defaultValue: 10 }) limit: number
+  ) {
+    try {
+      let response: EssayAnswer[] = [];
+      (await this.surveyService.getEssayAnswers(sort, limit)).forEach((v) => {
+        v.body.forEach((e) => {
+          if(e.text) {
+            response.push({
+              answer: e.text,
+              date: v.createdAt.toLocaleString(),
+              unit: v.unit[0]
+            })
+          }
+        })
+      })
+      
+      return response;
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+  
+  @Query(of => [EssayAnswer])
+  @UseGuards(UserGuard)
+  async getEssayAnswersByFrontdesk(
+    @Args('limit', { type: () => Number, defaultValue: 10 }) limit: number,
+    @Context('user') { _id }: User
+  )
+  {
+    try {
+      let response: EssayAnswer[] = [];
+      (await this.surveyService.getEssayAnswersByFrontdesk(_id, limit)).forEach((v) => {
+        v.body.forEach((e) => {
+          if(e.text) {
+            response.push({
+              answer: e.text,
+              date: v.createdAt.toLocaleString(),
+              unit: v.unit
+            })
+          }
+        })
+      })
+
+      return response;
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
   }
 
 }

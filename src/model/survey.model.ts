@@ -12,6 +12,12 @@ export type SurveyDocument = Survey & Document;
 export class Survey extends BaseModel {
 
   @Prop({
+    type: String,
+    required: false
+  })
+  noAntrian?: string;
+
+  @Prop({
     type: [{
       question: schema.Types.ObjectId,
       answer: schema.Types.ObjectId,

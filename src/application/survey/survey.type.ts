@@ -138,6 +138,17 @@ export class CalculateAverageUnitGlobal {
 }
 
 @ObjectType()
+export class SurveyLinkStatusResponse {
+
+  @Field(type => String)
+  link: string;
+
+  @Field(type => Boolean)
+  status: boolean;
+
+}
+
+@ObjectType()
 export class UnitType {
   @Field(type => String)
   name: string;
@@ -154,6 +165,20 @@ export class AverageTypeUnit {
 
   @Field(type => UnitType, { nullable: true })
   unit?: any;
+
+}
+
+@ObjectType()
+export class EssayAnswer {
+
+  @Field(type => String)
+  answer: string;
+
+  @Field(type => Unit)
+  unit: string;
+
+  @Field(type => String)
+  date: string;
 
 }
 
