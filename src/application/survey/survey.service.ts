@@ -140,11 +140,12 @@ export class SurveyService {
       const noAntrianArray: Array<SurveyLinkStatusResponse> = []
       while (checker) {
         const surveyLinkOnRedis = await this.redisClient.get(dateString + num)
-        if (surveyLinkOnRedis !== null) {
-          noAntrianArray.push({ link: dateString + num, status: Boolean(surveyLinkOnRedis) ? true : Boolean(surveyLinkOnRedis) })
-          num++
-        } else {
+        
+        if (surveyLinkOnRedis === null) {
           checker = false
+        } else {
+          noAntrianArray.push({ link: dateString + num, status: Boolean(JSON.parse(surveyLinkOnRedis)) ? true : Boolean(JSON.parse(surveyLinkOnRedis)) })
+          num++
         }
       }
 
