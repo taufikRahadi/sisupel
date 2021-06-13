@@ -461,6 +461,32 @@ export class SurveyResolver {
     }
   }
 
+  @Query(of => [EssayAnswer])
+  @UseGuards(UserGuard)
+  async getEssayAnswersByUnit(
+    @Args('id', { type: () => String, nullable: false }) id: string,
+    @Args('limit', { type: () => Number, nullable: true, defaultValue: 10 }) limit: number,
+  ) {
+    try {
+      let response: EssayAnswer[] = [];
+      (await this.surveyService.getEssayAnswersByUnit(id, limit)).forEach((v) => {
+        v.body.forEach((e) =>{
+          if (e.text) {
+            response.push({
+              answer: e.text,
+              user: v.user,
+              unit: v.unit,
+              date: v.createdAt.toLocaleString()
+            })
+          }
+        })
+      })
+      return response;
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
 }
 
 @Resolver(of => SurveyBodyResponse)
