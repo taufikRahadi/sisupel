@@ -5,9 +5,10 @@ import { Model, ObjectId, Types } from "mongoose";
 import { PrivilegesGuard } from "src/infrastructure/privileges.guard";
 import { UserGuard } from "src/infrastructure/user.guard";
 import { SurveyQuestion, SurveyQuestionDocument } from "src/model/survey-question.model";
+import { Survey, SurveyDocument } from "src/model/survey.model";
 import { User } from "src/model/user.model";
 import { IsAllowTo } from "src/utils/decorators/privileges.decorator";
-import { SurveyQuestionPayload } from "./survey-question.type";
+import { SurveyQuestionPayload, SurveyQuestionResponse } from "./survey-question.type";
 
 const ObjectIdTypes = Types.ObjectId;
 
@@ -15,20 +16,109 @@ const ObjectIdTypes = Types.ObjectId;
 export class SurveyQuestionResolver {
 
   constructor(
-    @InjectModel(SurveyQuestion.name) private readonly surveyQuestionModel: Model<SurveyQuestionDocument>
+    @InjectModel(SurveyQuestion.name) private readonly surveyQuestionModel: Model<SurveyQuestionDocument>,
+    @InjectModel(Survey.name) private readonly surveyModel: Model<SurveyDocument>
   ) {}
 
-  @Query(returns => [SurveyQuestion])
+  @Query(returns => [SurveyQuestionResponse])
   @UseGuards(UserGuard)
   async getQuestion(
     @Args('limit', { type: () => Number, defaultValue: 10 }) limit: number
   ) {
     try {
-      return await this.surveyQuestionModel.find({
-        isActive: true
-      }).limit(limit).sort({
-        order: 1
-      })
+      return await this.surveyModel.aggregate([
+        {
+          $unwind: "$body",
+        },
+        {
+          $group: {
+            _id: "$body.question",
+            answers: {
+              $push: "$body.answer"
+            },
+            total: {
+              $sum: 1
+            }
+          }
+        },
+        {
+          $unwind: "$answers"
+        },
+        {
+          $lookup: {
+            from: "surveyquestions",
+            localField: "_id",
+            foreignField: "_id",
+            as: "question"
+          }
+        },
+        {
+          $lookup: {
+            from: "surveyanswers",
+            localField: "answers",
+            foreignField: "_id",
+            as: "answers"
+          }
+        },
+        {
+          $unwind: "$answers"
+        },
+        {
+          $group: {
+            _id: {
+              _id: "$_id",
+              total: "$total"
+            },
+            rating: {
+              $avg: "$answers.value"
+            },
+            questions: {
+              $first: "$question"
+            },
+            type: {
+              $first: "$question.type"
+            }
+          }
+        },
+        {
+          $unwind: "$questions"
+        },
+        {
+          $unwind: "$type"
+        },
+        {
+          $sort: {
+            "questions.order": 1
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            questions: 1,
+            rating: {
+              $cond: {
+                if: {
+                  $eq: [ "$type", "ESSAY" ]
+                },
+                then: 0,
+                else: "$rating"
+              }
+            }
+          }
+        },
+        {
+          $replaceRoot: {
+            newRoot: {
+              $mergeObjects: [ "$questions", "$$ROOT" ]
+            }
+          }
+        },
+        {
+          $project: {
+            questions: 0
+          }
+        }
+      ]);
     } catch (error) {
       throw new InternalServerErrorException(error)
     }
@@ -71,7 +161,7 @@ export class SurveyQuestionResolver {
     @Context('user') { _id }: User
   ) {
     try {
-      await this.surveyQuestionModel.create({ question, type ,lastModifiedBy: _id, order })
+      await this.surveyQuestionModel.create({ question, type ,lastModifiedBy: _id, order, createdBy: _id })
       return true
     } catch (error) {
       throw new InternalServerErrorException(error)

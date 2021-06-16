@@ -40,6 +40,12 @@ export class SurveyQuestion extends BaseModel {
   lastModifiedBy: string;
 
   @Prop({
+    type: schema.Types.ObjectId,
+    ref: 'User'
+  })
+  createdBy?: string;
+
+  @Prop({
     type: Number,
     required: true,
   })
