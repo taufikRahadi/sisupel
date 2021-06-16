@@ -17,6 +17,36 @@ export class UserService {
     @InjectModel(Unit.name) private readonly unitModel: Model<UnitDocument>,
   ) {}
 
+  async countUsers(query?: string) {
+    try {
+      const where = query ? {
+        $or: [
+          { fullname: { $regex: `.*${query}.*`, $options: 'i' } },
+          { email: { $regex: `.*${query}.*`, $options: 'i' } }
+        ]
+      } : {}
+      return await this.userModel.find(where).count()
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
+  async getAllUsers(limit: number, skip: number, query?: string) {
+    try {
+      const where = query ? {
+        $or: [
+          { fullname: { $regex: `.*${query}.*`, $options: 'i' } },
+          { email: { $regex: `.*${query}.*`, $options: 'i' } }
+        ]
+      } : {}
+      const users = await this.userModel.find(where).limit(limit).skip(skip)
+
+      return users
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
   async findByUsername(email: string, populate?: string[] | object[]) {
     try {
       return await this.userModel.findOne({
