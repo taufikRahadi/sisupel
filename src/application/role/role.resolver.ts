@@ -1,5 +1,5 @@
 import { BadRequestException, InternalServerErrorException, UseGuards } from "@nestjs/common";
-import { Args, Context, Mutation, Query, Resolver } from "@nestjs/graphql";
+import { Args, Context, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/graphql";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { PrivilegesGuard } from "src/infrastructure/privileges.guard";
@@ -107,6 +107,15 @@ export class RoleResolver {
     } catch (error) {
       throw new InternalServerErrorException(error)
     }
+  }
+
+  @ResolveField('privileges', returns => [RolePrivilege])
+  async getPrivileges(@Parent() { privileges }: Role) {
+    return this.rolePrivilegeModel.find({
+      _id: {
+        $in: privileges
+      }
+    })
   }
 
 }
