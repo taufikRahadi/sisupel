@@ -1,5 +1,6 @@
-import { ArgsType, Field } from "@nestjs/graphql";
+import { ArgsType, Field, ObjectType } from "@nestjs/graphql";
 import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from "class-validator";
+import { User } from "src/model/user.model";
 import { Match } from "src/utils/decorators/match.decorator";
 
 @ArgsType()
@@ -71,4 +72,30 @@ export class ChangePasswordArgs {
   @IsString()
   newPasswordConfirmation: string;
 
+}
+
+@ObjectType()
+export class UserResponse {
+
+  @Field(type => Number)
+  currentPage: number;
+
+  @Field(type => Number)
+  totalItems: number;
+
+  @Field(type => [User])
+  users: User[];
+
+}
+
+@ArgsType()
+export class GetAllUsersArgs {
+  @Field(type => Number, { defaultValue: 10 })
+  limit: number;
+
+  @Field(type => Number, { defaultValue: 1 })
+  page: number;
+
+  @Field(type => String, { nullable: true })
+  query: string;
 }
