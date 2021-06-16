@@ -24,7 +24,8 @@ import { UserModule } from './user/user.module';
       context: ({ req }) => ({ headers: req.headers }),
       playground: true,
       introspection: true,
-      uploads: true
+      uploads: true,
+      cors: "*"
     }),
     MongooseModule.forRootAsync({
       useFactory: (env: ConfigService) => ({
