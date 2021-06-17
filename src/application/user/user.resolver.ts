@@ -116,7 +116,7 @@ export class UserResolver {
   async createUser(
     @Args() payload: CreateUserPayload
   ) {
-    await this.userService.create({ ...payload, password: payload.email });
+    await this.userService.create({ ...payload, password: 'Sisupel123456' });
     return true;
   }
 
