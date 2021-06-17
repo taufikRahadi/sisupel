@@ -5,7 +5,7 @@ import { UserGuard } from "src/infrastructure/user.guard";
 import { User } from "src/model/user.model";
 import { IsAllowTo } from "src/utils/decorators/privileges.decorator";
 import { UserService } from "./user.service";
-import { ChangePasswordArgs, CreateUserPayload, UpdateMyProfile } from "./user.type";
+import { ChangePasswordArgs, CreateUserPayload, GetAllUsersArgs, UpdateMyProfile, UserResponse } from "./user.type";
 import { GraphQLUpload } from 'apollo-server-express'
 import { FileUpload } from 'graphql-upload'
 import { createWriteStream, unlink } from "fs";
@@ -13,13 +13,15 @@ import { join } from "path";
 import { Unit, UnitDocument } from "src/model/unit.model";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
+import { Role, RoleDocument } from "src/model/role.model";
 
 @Resolver(of => User)
 export class UserResolver {
 
   constructor(
     private readonly userService: UserService,
-    @InjectModel(Unit.name) private readonly unitModel: Model<UnitDocument>
+    @InjectModel(Unit.name) private readonly unitModel: Model<UnitDocument>,
+    @InjectModel(Role.name) private roleModel: Model<RoleDocument>,
   ) {}
 
   @UseGuards(UserGuard, PrivilegesGuard)
@@ -118,6 +120,22 @@ export class UserResolver {
     return true;
   }
 
+  @Query(returns => UserResponse)
+  @UseGuards(UserGuard, PrivilegesGuard)
+  @IsAllowTo('create-user')
+  async getAllUsers(
+    @Args() { limit, page, query }: GetAllUsersArgs
+  ) {
+    const skip = page > 1 ? page : 0
+    const users = await this.userService.getAllUsers(limit, skip * limit, query)
+    const response: UserResponse = {
+      currentPage: page,
+      totalItems: await this.userService.countUsers(query),
+      users 
+    }
+    return response
+  }
+
   @Mutation(returns => Boolean)
   @UseGuards(UserGuard)
   async changePassword(
@@ -140,6 +158,11 @@ export class UserResolver {
   @ResolveField('unit', returns => Unit)
   async getUnit(@Parent() { unit }: User) {
     return await this.unitModel.findById(unit)
+  }
+
+  @ResolveField('role', returns => Role)
+  async getRole(@Parent() { role }: User) {
+    return this.roleModel.findById(role)
   }
 
   @ResolveField('photo', returns => String, { nullable: true })
