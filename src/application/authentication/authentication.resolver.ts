@@ -1,12 +1,16 @@
-import { BadRequestException, InternalServerErrorException, UseGuards } from "@nestjs/common";
+import { BadRequestException, InternalServerErrorException, NotFoundException, UseGuards } from "@nestjs/common";
 import { Args, Context, Mutation, Query, Resolver } from "@nestjs/graphql";
 import { UserGuard } from "src/infrastructure/user.guard";
 import { User } from "src/model/user.model";
 import { UserService } from "../user/user.service";
 import { AuthenticationService } from "./authentication.service";
-import { SignInPayload, SignInResponse } from "./authentication.type";
+import { RequestResetPasswordPayload, ResetPasswordPayload, SignInPayload, SignInResponse } from "./authentication.type";
 import { sign, verify, decode } from 'jsonwebtoken'
 import { ConfigService } from "@nestjs/config";
+import { v4 as uuidv4 } from 'uuid'
+import { RedisService } from "nestjs-redis";
+import { MailerService } from "@nestjs-modules/mailer";
+import { hashSync, genSaltSync } from 'bcrypt'
 
 @Resolver()
 export class AuthenticationResolver {
@@ -14,8 +18,12 @@ export class AuthenticationResolver {
   constructor(
     private readonly authService: AuthenticationService,
     private readonly userService: UserService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly redisService: RedisService,
+    private readonly mailerService: MailerService
   ) {}
+
+  private redisClient = this.redisService.getClient()
 
   @Mutation(returns => SignInResponse)
   async signIn(
@@ -74,6 +82,58 @@ export class AuthenticationResolver {
       }, `${this.configService.get<string>('JWT_SECRET')}-refresh`)
 
       return { accessToken, refreshToken }
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
+  @Mutation(returns => Boolean)
+  async resetPassword(
+    @Args() { password, passwordConfirmation, token }: ResetPasswordPayload
+  ) {
+    try {
+      const findToken = await this.redisClient.get(token)
+      if (!findToken) throw new BadRequestException('Tautan telah kadaluwarsa atau tautan telah digunakan.')
+
+      const findUser = await this.userService.findByUsername(findToken)
+      if (!findUser) throw new BadRequestException(`User dengan email '${findToken}' tidak ditemukan`)
+
+      await this.userService.updateUser(findUser._id, {
+        password: hashSync(password, genSaltSync(12))
+      })
+
+      await this.redisClient.del(token)
+
+      return true
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
+  @Mutation(returns => Boolean)
+  async requestResetPasswordLink(
+    @Args() { email }: RequestResetPasswordPayload 
+  ) {
+    try {
+      const findUser = await this.userService.findByUsername(email)
+      if (!findUser)
+       throw new NotFoundException(`User dengan email '${email}' tidak ditemukan`)
+
+      const token = uuidv4() // sign token with uuid v4
+
+      await this.redisClient.set(token, email, 'EX', (60 * 60) * 60)
+      await this.mailerService.sendMail({
+        from: this.configService.get<string>("SMTP_AUTH_USERNAME"),
+        to: 'taufikrahadi1@gmail.com',
+        subject: 'ATUR ULANG KATA SANDI',
+        template: './reset-password',
+        context: {
+          name: findUser.fullname,
+          url: this.configService.get<string>('FRONTEND_URL') + 'auth/reset-kata-sandi?token=' + token
+        }
+      })
+
+      return true
     } catch (error) {
       throw new InternalServerErrorException(error)
     }
