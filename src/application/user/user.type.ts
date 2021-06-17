@@ -26,16 +26,16 @@ export class CreateUserPayload {
   @Field(type => String)
   email: string;
 
-  @IsString()
-  @IsNotEmpty()
-  @MinLength(8)
-  @Field(type => String)
-  password: string;
+  // @IsString()
+  // @IsNotEmpty()
+  // @MinLength(8)
+  // @Field(type => String)
+  // password: string;
 
-  @IsString()
-  @Match('password')
-  @Field(type => String)
-  passwordConfirmation: string;
+  // @IsString()
+  // @Match('password')
+  // @Field(type => String)
+  // passwordConfirmation: string;
 
 }
 
