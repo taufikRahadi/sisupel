@@ -158,10 +158,22 @@ export class SurveyQuestionResolver {
     @Args('question', { type: () => String, nullable: false }) question: string,
     @Args('type', { type: () => String, nullable: false, defaultValue: 'KUESIONER' }) type: 'KUESIONER' | 'ESSAY',
     @Args('order', { type: () => Number, nullable: false }) order: number,
+    @Args('isActive', { type: () => Boolean, nullable: true, defaultValue: true }) isActive: boolean,
     @Context('user') { _id }: User
   ) {
     try {
-      await this.surveyQuestionModel.create({ question, type ,lastModifiedBy: _id, order, createdBy: _id })
+      const check_order = await this.surveyQuestionModel.findOne({
+        isActive: true,
+        order
+      });
+
+      if (check_order) {
+        throw new InternalServerErrorException({
+          message: "Can't entry question with that order number"
+        });
+      }
+
+      await this.surveyQuestionModel.create({ question, type ,lastModifiedBy: _id, order, createdBy: _id, isActive })
       return true
     } catch (error) {
       throw new InternalServerErrorException(error)
