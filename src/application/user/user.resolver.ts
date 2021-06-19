@@ -38,17 +38,17 @@ export class UserResolver {
   async updateMyProfile(
     @Context('user') { _id, photo }: User,
     @Args() { fullname }: UpdateMyProfile,
-    @Args('picture', { name: 'picture', type: () => GraphQLUpload, nullable: true }) picture: FileUpload
+    // @Args('picture', { name: 'picture', type: () => GraphQLUpload, nullable: true }) picture: FileUpload
   ) {
-    let fName: string;
-    if (picture) {
-      fName = await this.uploadPhoto(picture)
-      this.removeFile(photo)
-    }
+    // let fName: string;
+    // if (picture) {
+    //   fName = await this.uploadPhoto(picture)
+    //   this.removeFile(photo)
+    // }
  
     const updateUser = await this.userService.updateUser(_id, {
       fullname,
-      photo: fName
+      // photo: fName
     })
 
     return await this.userService.findById(_id)
