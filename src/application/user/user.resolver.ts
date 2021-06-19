@@ -1,11 +1,11 @@
-import { BadRequestException, InternalServerErrorException, UseGuards } from "@nestjs/common";
+import { BadRequestException, InternalServerErrorException, NotFoundException, UseGuards } from "@nestjs/common";
 import { Args, Context, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/graphql";
 import { PrivilegesGuard } from "src/infrastructure/privileges.guard";
 import { UserGuard } from "src/infrastructure/user.guard";
 import { User } from "src/model/user.model";
 import { IsAllowTo } from "src/utils/decorators/privileges.decorator";
 import { UserService } from "./user.service";
-import { ChangePasswordArgs, CreateUserPayload, GetAllUsersArgs, UpdateMyProfile, UserResponse } from "./user.type";
+import { ChangePasswordArgs, CreateUserPayload, GetAllUsersArgs, UpdateMyProfile, UpdateUserPayload, UserResponse } from "./user.type";
 import { GraphQLUpload } from 'apollo-server-express'
 import { FileUpload } from 'graphql-upload'
 import { createWriteStream, unlink } from "fs";
@@ -14,6 +14,7 @@ import { Unit, UnitDocument } from "src/model/unit.model";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Role, RoleDocument } from "src/model/role.model";
+import { genSaltSync, hashSync } from "bcrypt";
 
 @Resolver(of => User)
 export class UserResolver {
@@ -118,6 +119,26 @@ export class UserResolver {
   ) {
     await this.userService.create({ ...payload, password: 'Sisupel123456' });
     return true;
+  }
+
+  @Mutation(returns => User)
+  @UseGuards(UserGuard, PrivilegesGuard)
+  @IsAllowTo('create-user')
+  async updateUser(
+    @Context('user') user: User,
+    @Args('userId', { type: () => String }) userId: string,
+    @Args() payload: UpdateUserPayload
+  ) {
+    const findUser = await this.userService.findById(userId)
+    if (!findUser) throw new NotFoundException(`User dengan id ${userId} tidak ditemukan`)
+
+    if (payload.password) payload.password = hashSync(payload.password, genSaltSync(12))
+
+    await this.userService.updateUser(userId, {
+      ...payload, lastModifiedBy: user._id
+    })
+
+    return this.userService.findById(findUser._id)
   }
 
   @Query(returns => UserResponse)
