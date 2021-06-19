@@ -324,7 +324,8 @@ export class SurveyResolver {
             response.push({
               answer: e.text,
               date: v.createdAt.toLocaleString(),
-              unit: v.unit[0]
+              unit: v.unit[0],
+              user: v.user
             })
           }
         })
@@ -351,7 +352,8 @@ export class SurveyResolver {
             response.push({
               answer: e.text,
               date: v.createdAt.toLocaleString(),
-              unit: v.unit
+              unit: v.unit,
+              user: v.user
             })
           }
         })
