@@ -2205,7 +2205,7 @@ export class SurveyService {
   async getEssayAnswers(sort?: number, limit?: number) {
     try {
 
-      return await this.surveyModel.aggregate([
+      const essays = await this.surveyModel.aggregate([
         {
           $lookup: {
             from: "users",
@@ -2239,16 +2239,21 @@ export class SurveyService {
           }
         },
         {
-          $project: {
-            user: 0
-          }
+          $unwind: '$user'
         }
+        // {
+        //   $project: {
+        //     user: 0
+        //   }
+        // }
       ])
       .sort({
         createdAt: sort == 0 ? -1 : sort
       })
       .limit(limit);
 
+      console.log(essays)
+      return essays
     } catch (error) {
       throw new InternalServerErrorException(error);
     }
