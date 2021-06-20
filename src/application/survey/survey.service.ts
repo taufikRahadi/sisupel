@@ -544,7 +544,12 @@ export class SurveyService {
           $unwind: '$user'
         },
         {
-          $match: { createdAt: { $gte: range.from, $lte: range.to } }
+          $match: {
+            createdAt: {
+              $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+              $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
+            }
+          }
         },
       ])
       .sort({ createdAt: sort })
@@ -563,7 +568,12 @@ export class SurveyService {
         .find({
           $and: [
             { "user": user },
-            { createdAt: { $gte: new Date(range.from), $lte: new Date(range.to) } }
+            { 
+              createdAt: {
+                $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+                $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
+              }
+            }
           ] 
         })
         .sort({ 'createdAt': sort })
@@ -675,8 +685,8 @@ export class SurveyService {
         {
           $match: {
             createdAt: {
-              $gte: new Date(range.from),
-              $lte: new Date(range.to)
+              $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+              $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
             }
           }
         },
@@ -925,8 +935,8 @@ export class SurveyService {
         {
           $match: {
             createdAt: {
-              $gte: new Date(range.from),
-              $lte: new Date(range.to)
+              $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+              $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
             }
           }
         },
@@ -1174,8 +1184,8 @@ export class SurveyService {
         {
           $match: {
             createdAt: {
-              $gte: new Date(range.from),
-              $lte: new Date(range.to)
+              $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+              $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
             }
           }
         },
@@ -1404,8 +1414,8 @@ export class SurveyService {
         {
           $match: {
             createdAt: {
-              $gte: new Date(range.from),
-              $lte: new Date(range.to)
+              $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+              $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
             }
           }
         },
@@ -1675,8 +1685,8 @@ export class SurveyService {
         {
           $match: {
             createdAt: {
-              $gte: new Date(range.from),
-              $lte: new Date(range.to)
+              $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+              $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
             }
           }
         },
@@ -1975,8 +1985,8 @@ export class SurveyService {
         {
           $match: {
             createdAt: {
-              $gte: new Date(range.from),
-              $lte: new Date(range.to)
+              $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+              $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
             }
           }
         },
@@ -2167,8 +2177,8 @@ export class SurveyService {
         {
           $match: {
             createdAt: {
-              $gte: new Date(range.from),
-              $lte: new Date(range.to)
+              $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+              $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
             }
           }
         },
