@@ -138,8 +138,8 @@ export class SurveyResolver {
   }
 
   @Query(returns => [AverageType])
-  @UseGuards(UserGuard, PrivilegesGuard)
-  @IsAllowTo('calculate-self-survey')
+  @UseGuards(UserGuard)
+  // @IsAllowTo('calculate-self-survey')
   async calculateFrontdeskQuestionnare(
     @Context('user') { _id }: User,
     @Args('range', { type: () => DateRange, nullable: true }) range: DateRange,
