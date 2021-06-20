@@ -31,82 +31,139 @@ export class SurveyService {
     }
   }
 
-  async calculateEssayUnit(unitId: string) {
+  async countEssayUnit(id: string) {
     try {
-      const today = new Date()
+      const today = new Date();
       const essays = await this.surveyModel.aggregate([
         {
           $lookup: {
-            from: 'surveyquestions',
-            let: { 'question': '$_id' },
-            as: 'question',
-            pipeline: [
-              {
-                $match: {
-                  'type': 'ESSAY'
-                }
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user"
+          }
+        },
+        {
+          $match: {
+            body: {
+              $elemMatch: {
+                text: { $exists: true }
               }
-            ]
+            }
           }
         },
         {
           $unwind: "$user"
-        }
-      ])
-
-      const essayToday = await this.surveyModel.aggregate([
+        },
         {
           $lookup: {
-            from: 'surveyquestions',
-            let: { 'question': '$_id' },
-            as: 'question',
-            pipeline: [
-              {
-                $match: {
-                  'type': 'ESSAY'
-                }
-              }
-            ]
+            from: "units",
+            localField: "user.unit",
+            foreignField: "_id",
+            as: "unit"
+          }
+        },
+        {
+          $unwind: "$unit"
+        },
+        {
+          $match: {
+            "unit._id": ObjectId(id),
+            // "role.name": "FRONT DESK"
+          }
+        }
+      ]);
+
+      const todayTotal = await this.surveyModel.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user"
           }
         },
         {
           $match: {
+            body: {
+              $elemMatch: {
+                text: { $exists: true }
+              }
+            },
             $expr: {
               $eq: [{'$dayOfMonth': '$createdAt'}, today.getDate()]
             }
           }
-        }
-      ])
-
-      const essayYesterday = await this.surveyModel.aggregate([
+        },
+        {
+          $unwind: "$user"
+        },
         {
           $lookup: {
-            from: 'surveyquestions',
-            let: { 'question': '$_id' },
-            as: 'question',
-            pipeline: [
-              {
-                $match: {
-                  'type': 'ESSAY'
-                }
-              }
-            ]
+            from: "units",
+            localField: "user.unit",
+            foreignField: "_id",
+            as: "unit"
+          }
+        },
+        {
+          $unwind: "$unit"
+        },
+        {
+          $match: {
+            "unit._id": ObjectId(id),
+          }
+        }
+      ]);
+
+      const yesterdayTotal = await this.surveyModel.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user"
           }
         },
         {
           $match: {
+            body: {
+              $elemMatch: {
+                text: { $exists: true }
+              }
+            },
             $expr: {
-              $eq: [{'$dayOfMonth': '$createdAt'}, today.getDate()]
+              $eq: [{'$dayOfMonth': '$createdAt'}, today.getDate() - 1]
             }
           }
+        },
+        {
+          $unwind: "$user"
+        },
+        {
+          $lookup: {
+            from: "units",
+            localField: "user.unit",
+            foreignField: "_id",
+            as: "unit"
+          }
+        },
+        {
+          $unwind: "$unit"
+        },
+        {
+          $match: {
+            "unit._id": ObjectId(id),
+          }
         }
-      ])
+      ]);
 
       return {
-        total: essays.map(val => val.question.length > 0).length,
-        todayTotal: essayToday.map(val => val.question.length > 0).length,
-        yesterdayTotal: essayYesterday.map(val => val.question.length > 0).length
+        total: essays.length,
+        yesterdayTotal: yesterdayTotal.length,
+        todayTotal: todayTotal.length
       }
+
     } catch (error) {
       throw new InternalServerErrorException(error)
     }
@@ -205,76 +262,232 @@ export class SurveyService {
     }
   }
 
-  async calculateEssayGlobal(): Promise<CalculateEssayResponse> {
+  async countEssayGlobal(): Promise<CalculateEssayResponse> {
     try {
-      const today = new Date()
+      const today = new Date();
+      const essays = await this.surveyModel.aggregate([
+        {
+          $match: {
+            body: {
+              $elemMatch: {
+                text: { $exists: true }
+              }
+            }
+          }
+        }
+      ]);
+
+      const todayTotal = await this.surveyModel.aggregate([
+        {
+          $match: {
+            body: {
+              $elemMatch: {
+                text: { $exists: true }
+              }
+            },
+            $expr: {
+              $eq: [{'$dayOfMonth': '$createdAt'}, today.getDate()]
+            }
+          }
+        }
+      ]);
+
+      const yesterdayTotal = await this.surveyModel.aggregate([
+        {
+          $match: {
+            body: {
+              $elemMatch: {
+                text: { $exists: true }
+              }
+            },
+            $expr: {
+              $eq: [{'$dayOfMonth': '$createdAt'}, today.getDate() - 1]
+            }
+          }
+        }
+      ]);
+
+      return {
+        total: essays.length,
+        yesterdayTotal: yesterdayTotal.length,
+        todayTotal: todayTotal.length
+      }
+
+    } catch (error) {
+      throw new InternalServerErrorException(error)
+    }
+  }
+
+  async countEssayFrontdesk(id: string) {
+    try {
+      const today = new Date();
       const essays = await this.surveyModel.aggregate([
         {
           $lookup: {
-            from: 'surveyquestions',
-            let: { 'question': '$_id' },
-            as: 'question',
-            pipeline: [
-              {
-                $match: {
-                  'type': 'ESSAY'
-                }
-              }
-            ]
-          }
-        },
-      ])
-
-      const essayToday = await this.surveyModel.aggregate([
-        {
-          $lookup: {
-            from: 'surveyquestions',
-            let: { 'question': '$_id' },
-            as: 'question',
-            pipeline: [
-              {
-                $match: {
-                  'type': 'ESSAY',
-                }
-              }
-            ]
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user"
           }
         },
         {
           $match: {
-            'createdAt': new Date(new Date(today.getFullYear(), today.getMonth(), today.getDate()))
+            body: {
+              $elemMatch: {
+                text: { $exists: true }
+              }
+            }
           }
-        }
-      ])
-
-      const essayYesterday = await this.surveyModel.aggregate([
+        },
+        {
+          $unwind: "$user"
+        },
         {
           $lookup: {
-            from: 'surveyquestions',
-            let: { 'question': '$_id' },
-            as: 'question',
-            pipeline: [
-              {
-                $match: {
-                  'type': 'ESSAY',
-                }
-              }
-            ]
+            from: "roles",
+            localField: "user.role",
+            foreignField: "_id",
+            as: "role"
+          }
+        },
+        {
+          $unwind: "$role"
+        },
+        {
+          $lookup: {
+            from: "units",
+            localField: "user.unit",
+            foreignField: "_id",
+            as: "unit"
+          }
+        },
+        {
+          $unwind: "$unit"
+        },
+        {
+          $match: {
+            "user._id": ObjectId(id),
+            // "role.name": "FRONT DESK"
+          }
+        }
+      ]);
+
+      const todayTotal = await this.surveyModel.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user"
           }
         },
         {
           $match: {
-            'createdAt': new Date(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1))
+            body: {
+              $elemMatch: {
+                text: { $exists: true }
+              }
+            },
+            $expr: {
+              $eq: [{'$dayOfMonth': '$createdAt'}, today.getDate()]
+            }
+          }
+        },
+        {
+          $unwind: "$user"
+        },
+        {
+          $lookup: {
+            from: "roles",
+            localField: "user.role",
+            foreignField: "_id",
+            as: "role"
+          }
+        },
+        {
+          $unwind: "$role"
+        },
+        {
+          $lookup: {
+            from: "units",
+            localField: "user.unit",
+            foreignField: "_id",
+            as: "unit"
+          }
+        },
+        {
+          $unwind: "$unit"
+        },
+        {
+          $match: {
+            "user._id": ObjectId(id),
+            // "role.name": "FRONT DESK"
           }
         }
-      ])
+      ]);
+
+      const yesterdayTotal = await this.surveyModel.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user"
+          }
+        },
+        {
+          $match: {
+            body: {
+              $elemMatch: {
+                text: { $exists: true }
+              }
+            },
+            $expr: {
+              $eq: [{'$dayOfMonth': '$createdAt'}, today.getDate() - 1]
+            }
+          }
+        },
+        {
+          $unwind: "$user"
+        },
+        {
+          $lookup: {
+            from: "roles",
+            localField: "user.role",
+            foreignField: "_id",
+            as: "role"
+          }
+        },
+        {
+          $unwind: "$role"
+        },
+        {
+          $lookup: {
+            from: "units",
+            localField: "user.unit",
+            foreignField: "_id",
+            as: "unit"
+          }
+        },
+        {
+          $unwind: "$unit"
+        },
+        {
+          $match: {
+            "user._id": ObjectId(id),
+            // "role.name": "FRONT DESK"
+          }
+        }
+      ]);
+
       return {
-        total: essays.map(val => val.question.length > 0).length,
-        todayTotal: essayToday.map(val => val.question.length > 0).length,
-        yesterdayTotal: essayYesterday.map(val => val.question.length > 0).length
+        total: essays.length,
+        yesterdayTotal: yesterdayTotal.length,
+        todayTotal: todayTotal.length
       }
+
     } catch (error) {
-      throw new InternalServerErrorException(error)
+      throw new InternalServerErrorException(error);
     }
   }
 
@@ -331,7 +544,12 @@ export class SurveyService {
           $unwind: '$user'
         },
         {
-          $match: { createdAt: { $gte: range.from, $lte: range.to } }
+          $match: {
+            createdAt: {
+              $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+              $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
+            }
+          }
         },
       ])
       .sort({ createdAt: sort })
@@ -350,7 +568,12 @@ export class SurveyService {
         .find({
           $and: [
             { "user": user },
-            { createdAt: { $gte: new Date(range.from), $lte: new Date(range.to) } }
+            { 
+              createdAt: {
+                $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+                $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
+              }
+            }
           ] 
         })
         .sort({ 'createdAt': sort })
@@ -462,8 +685,8 @@ export class SurveyService {
         {
           $match: {
             createdAt: {
-              $gte: new Date(range.from),
-              $lte: new Date(range.to)
+              $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+              $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
             }
           }
         },
@@ -712,8 +935,8 @@ export class SurveyService {
         {
           $match: {
             createdAt: {
-              $gte: new Date(range.from),
-              $lte: new Date(range.to)
+              $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+              $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
             }
           }
         },
@@ -961,8 +1184,8 @@ export class SurveyService {
         {
           $match: {
             createdAt: {
-              $gte: new Date(range.from),
-              $lte: new Date(range.to)
+              $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+              $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
             }
           }
         },
@@ -1191,8 +1414,8 @@ export class SurveyService {
         {
           $match: {
             createdAt: {
-              $gte: new Date(range.from),
-              $lte: new Date(range.to)
+              $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+              $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
             }
           }
         },
@@ -1462,8 +1685,8 @@ export class SurveyService {
         {
           $match: {
             createdAt: {
-              $gte: new Date(range.from),
-              $lte: new Date(range.to)
+              $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+              $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
             }
           }
         },
@@ -1762,8 +1985,8 @@ export class SurveyService {
         {
           $match: {
             createdAt: {
-              $gte: new Date(range.from),
-              $lte: new Date(range.to)
+              $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+              $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
             }
           }
         },
@@ -1954,8 +2177,8 @@ export class SurveyService {
         {
           $match: {
             createdAt: {
-              $gte: new Date(range.from),
-              $lte: new Date(range.to)
+              $gte: new Date(`${new Date(range.from.setDate(range.from.getDate()-1)).toISOString().replace('T00','T17')}`),
+              $lte: new Date(`${new Date(range.to.setDate(range.to.getDate())).toISOString().replace('T00','T17')}`)
             }
           }
         },
