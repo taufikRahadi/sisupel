@@ -123,18 +123,30 @@ export class SurveyResolver {
   @Query(returns => CalculateEssayResponse)
   @UseGuards(UserGuard, PrivilegesGuard)
   // @IsAllowTo('calculate-unit-survey')
-  async calculateEssayGlobal() {
-    return await this.surveyService.calculateEssayGlobal()
+  async countEssayGlobal() {
+    return await this.surveyService.countEssayGlobal()
   }
 
   @Query(returns => CalculateEssayResponse)
   @UseGuards(UserGuard, PrivilegesGuard)
-  async calculateEssayUnit(
+  async countEssayUnit(
     @Context('user') { unit }: User
   ) {
     // return await this.surveyService
     const unitId: any = unit
-    return await this.surveyService.calculateEssayUnit(unitId._id)
+    return await this.surveyService.countEssayUnit(unitId._id)
+  }
+
+  @Query(returns => CalculateEssayResponse)
+  @UseGuards(UserGuard)
+  async countEssayFrontdesk(
+    @Context('user') { _id } : User
+  ) {
+    try {
+      return await this.surveyService.countEssayFrontdesk(_id)
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
   }
 
   @Query(returns => [AverageType])
