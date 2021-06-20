@@ -124,7 +124,7 @@ export class AuthenticationResolver {
       await this.redisClient.set(token, email, 'EX', (60 * 60) * 60)
       await this.mailerService.sendMail({
         from: this.configService.get<string>("SMTP_AUTH_USERNAME"),
-        to: 'taufikrahadi1@gmail.com',
+        to: email,
         subject: 'ATUR ULANG KATA SANDI',
         template: './reset-password',
         context: {
