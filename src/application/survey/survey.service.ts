@@ -2535,7 +2535,7 @@ export class SurveyService {
     }
   }
 
-  async getEssayAnswersByFrontdesk(id?: string, limit?: number) {
+  async getEssayAnswersByFrontdeskHaloUT(id?: string, limit?: number, role: "HALO UT" | "FRONT DESK" = "FRONT DESK") {
     try {
       return await this.surveyModel.aggregate([
         {
@@ -2583,7 +2583,7 @@ export class SurveyService {
         {
           $match: {
             "user._id": ObjectId(id),
-            "role.name": "FRONT DESK"
+            "role.name": role
           }
         }
       ])
