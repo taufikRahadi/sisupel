@@ -27,17 +27,42 @@ export class CreateUserPayload {
   @Field(type => String)
   email: string;
 
-  // @IsString()
-  // @IsNotEmpty()
-  // @MinLength(8)
-  // @Field(type => String)
-  // password: string;
+}
 
-  // @IsString()
-  // @Match('password')
-  // @Field(type => String)
-  // passwordConfirmation: string;
+@ArgsType()
+export class UpdateUserPayload extends CreateUserPayload {
+  @IsString()
+  @IsOptional()
+  @MinLength(3)
+  @Field(type => String, { nullable: true })
+  fullname: string;
 
+  @IsString()
+  @IsOptional()
+  @Field(type => String, { nullable: true })
+  unit: string;
+
+  @IsString()
+  @IsOptional()
+  @Field(type => String, { nullable: true })
+  role: string;
+
+  @IsEmail()
+  @IsOptional()
+  @Field(type => String, { nullable: true })
+  email: string;
+
+  @IsString()
+  @IsOptional()
+  @MinLength(8)
+  @Field(type => String, { nullable: true })
+  password: string;
+
+  @IsString()
+  @IsOptional()
+  @Match('password')
+  @Field(type => String, { nullable: true })
+  passwordConfirmation: string;
 }
 
 @ArgsType()

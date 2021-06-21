@@ -123,18 +123,43 @@ export class SurveyResolver {
   @Query(returns => CalculateEssayResponse)
   @UseGuards(UserGuard, PrivilegesGuard)
   // @IsAllowTo('calculate-unit-survey')
-  async calculateEssayGlobal() {
-    return await this.surveyService.calculateEssayGlobal()
+  async countEssayGlobal() {
+    return await this.surveyService.countEssayGlobal()
   }
 
   @Query(returns => CalculateEssayResponse)
   @UseGuards(UserGuard, PrivilegesGuard)
-  async calculateEssayUnit(
+  async countEssayUnit(
     @Context('user') { unit }: User
   ) {
     // return await this.surveyService
     const unitId: any = unit
-    return await this.surveyService.calculateEssayUnit(unitId._id)
+    return await this.surveyService.countEssayUnit(unitId._id)
+  }
+
+  @Query(returns => CalculateEssayResponse)
+  @UseGuards(UserGuard)
+  async countEssayFrontdesk(
+    @Context('user') { _id } : User
+  ) {
+    try {
+      return await this.surveyService.countEssayFrontdeskHaloUT(_id, "FRONT DESK")
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  @Query(returns => CalculateEssayResponse)
+  @UseGuards(UserGuard, PrivilegesGuard)
+  @IsAllowTo('calculate-self-survey')
+  async countEssayHaloUT(
+    @Context('user') { _id }: User
+  ) {
+    try {
+      return await this.surveyService.countEssayFrontdeskHaloUT(_id, "HALO UT")
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
   }
 
   @Query(returns => [AverageType])
@@ -149,17 +174,46 @@ export class SurveyResolver {
 
       if (!range) {
         if (isAccumulative) {
-          return await this.surveyService.calculateAverageFrontdeskAccumulative(_id, range);
+          return await this.surveyService.calculateAverageFrontdeskHaloUTAccumulative(_id, range);
         }
 
-        return await this.surveyService.calculateAverageFrontdesk(_id, range);
+        return await this.surveyService.calculateAverageFrontdeskHaloUT(_id, range);
       }
 
       if(isAccumulative) {
-        return await this.surveyService.calculateAverageFrontdeskAccumulative(_id, range);
+        return await this.surveyService.calculateAverageFrontdeskHaloUTAccumulative(_id, range);
       }
 
-      return await this.surveyService.calculateAverageFrontdesk(_id, range);
+      return await this.surveyService.calculateAverageFrontdeskHaloUT(_id, range);
+
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  @Query(returns => [AverageType])
+  @UseGuards(UserGuard, PrivilegesGuard)
+  @IsAllowTo('calculate-self-survey')
+  async calculateHaloUTQuestionnare(
+    @Context('user') { _id }: User,
+    @Args('range', { type: () => DateRange, nullable: true }) range: DateRange,
+    @Args('isAccumulative', { type: () => Boolean, defaultValue: false}) isAccumulative: boolean,
+  ) {
+    try {
+
+      if (!range) {
+        if (isAccumulative) {
+          return await this.surveyService.calculateAverageFrontdeskHaloUTAccumulative(_id, range);
+        }
+
+        return await this.surveyService.calculateAverageFrontdeskHaloUT(_id, range);
+      }
+
+      if(isAccumulative) {
+        return await this.surveyService.calculateAverageFrontdeskHaloUTAccumulative(_id, range);
+      }
+
+      return await this.surveyService.calculateAverageFrontdeskHaloUT(_id, range);
 
     } catch (error) {
       throw new InternalServerErrorException(error);
@@ -324,7 +378,8 @@ export class SurveyResolver {
             response.push({
               answer: e.text,
               date: v.createdAt.toLocaleString(),
-              unit: v.unit[0]
+              unit: v.unit[0],
+              user: v.user
             })
           }
         })
@@ -345,13 +400,42 @@ export class SurveyResolver {
   {
     try {
       let response: EssayAnswer[] = [];
-      (await this.surveyService.getEssayAnswersByFrontdesk(_id, limit)).forEach((v) => {
+      (await this.surveyService.getEssayAnswersByFrontdeskHaloUT(_id, limit, "FRONT DESK")).forEach((v) => {
         v.body.forEach((e) => {
           if(e.text) {
             response.push({
               answer: e.text,
               date: v.createdAt.toLocaleString(),
-              unit: v.unit
+              unit: v.unit,
+              user: v.user
+            })
+          }
+        })
+      })
+
+      return response;
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  @Query(of => [EssayAnswer])
+  @UseGuards(UserGuard)
+  async getEssayAnswersByHaloUT(
+    @Args('limit', { type: () => Number, defaultValue: 10 }) limit: number,
+    @Context('user') { _id }: User
+  )
+  {
+    try {
+      let response: EssayAnswer[] = [];
+      (await this.surveyService.getEssayAnswersByFrontdeskHaloUT(_id, limit, "HALO UT")).forEach((v) => {
+        v.body.forEach((e) => {
+          if(e.text) {
+            response.push({
+              answer: e.text,
+              date: v.createdAt.toLocaleString(),
+              unit: v.unit,
+              user: v.user
             })
           }
         })
