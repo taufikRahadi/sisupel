@@ -318,7 +318,7 @@ export class SurveyService {
     }
   }
 
-  async countEssayFrontdesk(id: string) {
+  async countEssayFrontdeskHaloUT(id: string, role: 'HALO UT' | 'FRONT DESK' ) {
     try {
       const today = new Date();
       const essays = await this.surveyModel.aggregate([
@@ -367,7 +367,7 @@ export class SurveyService {
         {
           $match: {
             "user._id": ObjectId(id),
-            // "role.name": "FRONT DESK"
+            "role.name": role
           }
         }
       ]);
@@ -421,7 +421,7 @@ export class SurveyService {
         {
           $match: {
             "user._id": ObjectId(id),
-            // "role.name": "FRONT DESK"
+            "role.name": role
           }
         }
       ]);
@@ -475,7 +475,7 @@ export class SurveyService {
         {
           $match: {
             "user._id": ObjectId(id),
-            // "role.name": "FRONT DESK"
+            "role.name": role
           }
         }
       ]);
