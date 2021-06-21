@@ -163,8 +163,8 @@ export class SurveyResolver {
   }
 
   @Query(returns => [AverageType])
-  @UseGuards(UserGuard)
-  // @IsAllowTo('calculate-self-survey')
+  @UseGuards(UserGuard, PrivilegesGuard)
+  @IsAllowTo('calculate-self-survey')
   async calculateFrontdeskQuestionnare(
     @Context('user') { _id }: User,
     @Args('range', { type: () => DateRange, nullable: true }) range: DateRange,
@@ -174,17 +174,46 @@ export class SurveyResolver {
 
       if (!range) {
         if (isAccumulative) {
-          return await this.surveyService.calculateAverageFrontdeskAccumulative(_id, range);
+          return await this.surveyService.calculateAverageFrontdeskHaloUTAccumulative(_id, range);
         }
 
-        return await this.surveyService.calculateAverageFrontdesk(_id, range);
+        return await this.surveyService.calculateAverageFrontdeskHaloUT(_id, range);
       }
 
       if(isAccumulative) {
-        return await this.surveyService.calculateAverageFrontdeskAccumulative(_id, range);
+        return await this.surveyService.calculateAverageFrontdeskHaloUTAccumulative(_id, range);
       }
 
-      return await this.surveyService.calculateAverageFrontdesk(_id, range);
+      return await this.surveyService.calculateAverageFrontdeskHaloUT(_id, range);
+
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  @Query(returns => [AverageType])
+  @UseGuards(UserGuard, PrivilegesGuard)
+  @IsAllowTo('calculate-self-survey')
+  async calculateHaloUTQuestionnare(
+    @Context('user') { _id }: User,
+    @Args('range', { type: () => DateRange, nullable: true }) range: DateRange,
+    @Args('isAccumulative', { type: () => Boolean, defaultValue: false}) isAccumulative: boolean,
+  ) {
+    try {
+
+      if (!range) {
+        if (isAccumulative) {
+          return await this.surveyService.calculateAverageFrontdeskHaloUTAccumulative(_id, range);
+        }
+
+        return await this.surveyService.calculateAverageFrontdeskHaloUT(_id, range);
+      }
+
+      if(isAccumulative) {
+        return await this.surveyService.calculateAverageFrontdeskHaloUTAccumulative(_id, range);
+      }
+
+      return await this.surveyService.calculateAverageFrontdeskHaloUT(_id, range);
 
     } catch (error) {
       throw new InternalServerErrorException(error);

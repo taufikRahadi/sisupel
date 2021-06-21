@@ -584,7 +584,7 @@ export class SurveyService {
     }
   }
 
-  async calculateAverageFrontdesk(user?: string, range?: DateRange) {
+  async calculateAverageFrontdeskHaloUT(user?: string, range?: DateRange) {
     try {
       if (!range) {
         const questionnares_mean = await this.surveyModel.aggregate([
@@ -662,7 +662,15 @@ export class SurveyService {
               },
               question: {
                 $first: "$question.question"
+              },
+              order: {
+                $first: "$question.order"
               }
+            }
+          },
+          {
+            $sort: {
+              order: 1
             }
           },
           {
@@ -672,6 +680,9 @@ export class SurveyService {
               user: "$_id._id.user",
               surveyQuestion: {
                 $first: "$question"
+              },
+              order: {
+                $first: "$order"
               },
               averageAnswer: 1
             }
@@ -770,6 +781,9 @@ export class SurveyService {
             },
             question: {
               $first: "$question.question"
+            },
+            order: {
+              $first: "$question.order",
             }
           }
         },
@@ -781,22 +795,47 @@ export class SurveyService {
               $first: "$question"
             },
             date: {
-              $concat: [
-                {
-                  $toString: "$_id._id.year"
-                }, 
-                "-", 
-                {
-                  $toString: "$_id._id.month"
-                },
-                "-", 
-                {
-                  $toString: "$_id._id.day"
-                },
-              ]
+              $dateFromString: {
+                dateString: {
+                  $concat: [
+                    {
+                      $toString: "$_id._id.year"
+                    }, 
+                    "-", 
+                    {
+                      $toString: "$_id._id.month"
+                    },
+                    "-", 
+                    {
+                      $toString: "$_id._id.day"
+                    },
+                  ]
+                }
+              }
             },
             user: "$_id._id.user",
-            averageAnswer: 1
+            averageAnswer: 1,
+            order: {
+              $first: "$order"
+            }
+          },
+        },
+        {
+          $sort: {
+            date: 1,
+            order: 1
+          }
+        },
+        {
+          $project: {
+            averageAnswer: 1,
+            count: 1,
+            surveyQuestion: 1,
+            order: 1,
+            date: {
+              $dateToString: { format: "%Y-%m-%d", date: "$date" }
+            },
+            user: 1
           }
         }
       ]);
@@ -807,7 +846,7 @@ export class SurveyService {
     }
   }
 
-  async calculateAverageFrontdeskAccumulative(user?: string, range?: DateRange) {
+  async calculateAverageFrontdeskHaloUTAccumulative(user?: string, range?: DateRange) {
     try {
       if (!range) {
         const questionnares_mean = await this.surveyModel.aggregate([
@@ -1072,7 +1111,11 @@ export class SurveyService {
         {
           $project: {
             _id: 0,
-            date: "$_id",
+            date: {
+              $dateFromString: {
+                dateString: "$_id"
+              }
+            },
             count: {
               $divide: [ "$questionCount", "$totalQuestions" ]
             },
@@ -1085,6 +1128,16 @@ export class SurveyService {
             date: 1
           }
         },
+        {
+          $project: {
+            averageAnswer: 1,
+            user: 1,
+            count: 1,
+            date: {
+              $dateToString: { format: "%Y-%m-%d", date: "$date" }
+            }
+          }
+        }
       ]);
 
       return questionnares_mean;
