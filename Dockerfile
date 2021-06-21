@@ -18,12 +18,6 @@ ENV SMTP_AUTH_PASS Yulgang907
 
 ENV FRONTEND_URL http://sisupel.ut.ac.id/
 
-ENV SMTP_HOST smtp.office365.com
-ENV SMTP_PORT 587
-ENV SMTP_AUTH_USERNAME sandi.agung@ecampus.ut.ac.id
-ENV SMTP_AUTH_PASS Yulgang907
-ENV FRONTEND_URL http://172.16.37.145
-
 EXPOSE 8080
 
 CMD [ "yarn", "start:dev" ]
