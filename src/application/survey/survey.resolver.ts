@@ -143,7 +143,20 @@ export class SurveyResolver {
     @Context('user') { _id } : User
   ) {
     try {
-      return await this.surveyService.countEssayFrontdesk(_id)
+      return await this.surveyService.countEssayFrontdeskHaloUT(_id, "FRONT DESK")
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  @Query(returns => CalculateEssayResponse)
+  @UseGuards(UserGuard, PrivilegesGuard)
+  @IsAllowTo('calculate-self-survey')
+  async countEssayHaloUT(
+    @Context('user') { _id }: User
+  ) {
+    try {
+      return await this.surveyService.countEssayFrontdeskHaloUT(_id, "HALO UT")
     } catch (error) {
       throw new InternalServerErrorException(error);
     }
