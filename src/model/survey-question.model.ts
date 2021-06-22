@@ -37,12 +37,14 @@ export class SurveyQuestion extends BaseModel {
     type: schema.Types.ObjectId,
     ref: 'User'
   })
+  @Field(type => String, { nullable: true })
   lastModifiedBy: string;
 
   @Prop({
     type: schema.Types.ObjectId,
     ref: 'User'
   })
+  @Field(type => String, { nullable: true })
   createdBy?: string;
 
   @Prop({
