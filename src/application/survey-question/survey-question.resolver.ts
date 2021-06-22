@@ -22,103 +22,159 @@ export class SurveyQuestionResolver {
 
   @Query(returns => [SurveyQuestionResponse])
   @UseGuards(UserGuard)
-  async getQuestion(
+  async getQuestions(
     @Args('limit', { type: () => Number, defaultValue: 10 }) limit: number
   ) {
     try {
-      return await this.surveyModel.aggregate([
-        {
-          $unwind: "$body",
-        },
-        {
-          $group: {
-            _id: "$body.question",
-            answers: {
-              $push: "$body.answer"
-            },
-            total: {
-              $sum: 1
-            }
-          }
-        },
-        {
-          $unwind: "$answers"
-        },
+      
+      return await this.surveyQuestionModel.aggregate([
         {
           $lookup: {
-            from: "surveyquestions",
-            localField: "_id",
-            foreignField: "_id",
-            as: "question"
-          }
-        },
-        {
-          $lookup: {
-            from: "surveyanswers",
-            localField: "answers",
-            foreignField: "_id",
-            as: "answers"
-          }
-        },
-        {
-          $unwind: "$answers"
-        },
-        {
-          $group: {
-            _id: {
-              _id: "$_id",
-              total: "$total"
-            },
-            rating: {
-              $avg: "$answers.value"
-            },
-            questions: {
-              $first: "$question"
-            },
-            type: {
-              $first: "$question.type"
-            }
-          }
-        },
-        {
-          $unwind: "$questions"
-        },
-        {
-          $unwind: "$type"
-        },
-        {
-          $sort: {
-            "questions.order": 1
+            from: "surveys",
+            let: { "id": "$body.question" },
+            pipeline: [
+              {
+                $unwind: "$body",
+              },
+              {
+                $group: {
+                  _id: "$body.question",
+                  answers: {
+                    $push: "$body.answer"
+                  },
+                  total: {
+                    $sum: 1
+                  }
+                }
+              },
+              {
+                $unwind: "$answers"
+              },
+              {
+                $lookup: {
+                  from: "surveyquestions",
+                  localField: "_id",
+                  foreignField: "_id",
+                  as: "question"
+                }
+              },
+              {
+                $lookup: {
+                  from: "surveyanswers",
+                  localField: "answers",
+                  foreignField: "_id",
+                  as: "answers"
+                }
+              },
+              {
+                $unwind: "$answers"
+              },
+              {
+                $group: {
+                  _id: {
+                    _id: "$_id",
+                    total: "$total"
+                  },
+                  rating: {
+                    $avg: "$answers.value"
+                  },
+                  questions: {
+                    $first: "$question"
+                  },
+                  type: {
+                    $first: "$question.type"
+                  }
+                }
+              },
+              {
+                $unwind: "$questions"
+              },
+              {
+                $unwind: "$type"
+              },
+              {
+                $sort: {
+                  "questions.order": 1
+                }
+              },
+              {
+                $project: {
+                  _id: 0,
+                  questions: 1,
+                  rating: {
+                    $cond: {
+                      if: {
+                        $eq: [ "$type", "ESSAY" ]
+                      },
+                      then: 0,
+                      else: "$rating"
+                    }
+                  }
+                }
+              },
+              {
+                $replaceRoot: {
+                  newRoot: {
+                    $mergeObjects: [ "$questions", "$$ROOT" ]
+                  }
+                }
+              },
+              {
+                $project: {
+                  questions: 0
+                }
+              },
+            ],
+            as: "surveys"
           }
         },
         {
           $project: {
-            _id: 0,
-            questions: 1,
+            surveys: {
+              $first: {
+                $filter: {
+                  input: "$surveys",
+                  as: "survey",
+                  cond: {
+                    $eq: [ "$$survey._id", "$_id" ]
+                  }
+                }
+              }
+            },
+            createdAt: 1,
+            updatedAt: 1,
+            question: 1,
+            isActive: 1,
+            order: 1,
+            type: 1
+          }
+        },
+        {
+          $project: {
+            createdAt: 1,
+            updatedAt: 1,
+            question: 1,
+            isActive: 1,
+            order: 1,
+            type: 1,
             rating: {
               $cond: {
                 if: {
-                  $eq: [ "$type", "ESSAY" ]
+                  $gt: [ "$surveys", "null" ]
                 },
-                then: 0,
-                else: "$rating"
+                then: "$surveys.rating",
+                else: 0
               }
             }
           }
         },
         {
-          $replaceRoot: {
-            newRoot: {
-              $mergeObjects: [ "$questions", "$$ROOT" ]
-            }
-          }
-        },
-        {
-          $project: {
-            questions: 0
+          $sort: {
+            order: 1
           }
         }
       ]);
+
     } catch (error) {
       throw new InternalServerErrorException(error)
     }
