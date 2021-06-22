@@ -1,5 +1,5 @@
 import { ArgsType, Field, ObjectType } from "@nestjs/graphql";
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from "class-validator";
+import { IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from "class-validator";
 import { User } from "src/model/user.model";
 import { Match } from "src/utils/decorators/match.decorator";
 
@@ -63,6 +63,11 @@ export class UpdateUserPayload extends CreateUserPayload {
   @Match('password')
   @Field(type => String, { nullable: true })
   passwordConfirmation: string;
+
+  @IsBoolean()
+  @IsOptional()
+  @Field(type => Boolean, { nullable: true })
+  isActive: boolean;
 }
 
 @ArgsType()
