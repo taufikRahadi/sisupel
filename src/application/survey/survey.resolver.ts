@@ -360,7 +360,7 @@ export class SurveyResolver {
   @Query(returns => [SurveyLinkStatusResponse])
   @UseGuards(UserGuard, PrivilegesGuard)
   async getSurveyLinkStatus() {
-    console.log(await this.surveyService.getNoAntrianStatus())
+    // console.log(await this.surveyService.getNoAntrianStatus())
     return await this.surveyService.getNoAntrianStatus()
   }
 
