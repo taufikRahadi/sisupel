@@ -149,6 +149,9 @@ export class SurveyLinkStatusResponse {
   @Field(type => Boolean)
   status: boolean;
 
+  @Field(type => String)
+  date?: string;
+
 }
 
 @ObjectType()
