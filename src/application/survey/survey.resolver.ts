@@ -234,7 +234,7 @@ export class SurveyResolver {
           const data = await this.surveyService.calculateQuestionnareUnitAccumulative(id, range);
 
           const response: CalculateAverageUnitGlobal = {
-            unitName: data[0].unit,
+            unitName: data.length > 0 ? data[0].unit : null,
             data
           }
 
@@ -254,8 +254,8 @@ export class SurveyResolver {
       if(isAccumulative) {
         const data = await this.surveyService.calculateQuestionnareUnitAccumulative(id, range);
         
-        let response: CalculateAverageUnitGlobal = {
-          unitName: data[0].unit,
+        const response: CalculateAverageUnitGlobal = {
+          unitName: data.length > 0 ? data[0].unit : null,
           data
         }
 
@@ -265,7 +265,7 @@ export class SurveyResolver {
       const data = await this.surveyService.calculateQuestionnareUnit(id, range);
 
       const response: CalculateAverageUnitGlobal = {
-        unitName: data[0].unit,
+        unitName: data.length > 0 ? data[0].unit : null,
         data
       }
 
