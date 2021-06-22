@@ -201,7 +201,7 @@ export class SurveyService {
         if (surveyLinkOnRedis === null) {
           checker = false
         } else {
-          noAntrianArray.push({ link: dateString + num, status: Boolean(JSON.parse(surveyLinkOnRedis)) ? true : Boolean(JSON.parse(surveyLinkOnRedis)) })
+          noAntrianArray.push({ link: dateString + num, status: Boolean(JSON.parse(surveyLinkOnRedis)) ? true : Boolean(JSON.parse(surveyLinkOnRedis)), date: `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}` })
           num++
         }
       }
