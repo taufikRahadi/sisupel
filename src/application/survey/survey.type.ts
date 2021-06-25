@@ -43,8 +43,8 @@ export class CalculateEssayResponse {
 export class CreateSurveyPayload {
   @Field(type => [SurveyBodyPayload])
   @IsArray()
-  @ArrayMinSize(8)
-  @ArrayMaxSize(8)
+  @ArrayMinSize(1)
+  // @ArrayMaxSize(8)
   @ValidateNested({ each: true })
   @Type(() => SurveyBodyPayload)
   body: SurveyBodyPayload[];
