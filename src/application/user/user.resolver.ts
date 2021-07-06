@@ -117,6 +117,8 @@ export class UserResolver {
   async createUser(
     @Args() payload: CreateUserPayload
   ) {
+    const user =  await this.userService.findByUsername(payload.email);
+    if (user) throw new BadRequestException(`Email ${payload.email} sudah digunakan. Silahkan menggunakan email baru`);
     await this.userService.create({ ...payload, password: 'Sisupel123456' });
     return true;
   }
