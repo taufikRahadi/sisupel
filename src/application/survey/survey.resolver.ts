@@ -377,7 +377,7 @@ export class SurveyResolver {
           if(e.text) {
             response.push({
               answer: e.text,
-              date: v.createdAt.toLocaleString(),
+              date: v.createdAt.toLocaleString('id-ID', { hour12: true }).replace(/[.]/g, ":"),
               unit: v.unit[0],
               user: v.user
             })
@@ -405,7 +405,7 @@ export class SurveyResolver {
           if(e.text) {
             response.push({
               answer: e.text,
-              date: v.createdAt.toLocaleString(),
+              date: v.createdAt.toLocaleString('id-ID', { hour12: true }).replace(/[.]/g, ":"),
               unit: v.unit,
               user: v.user
             })
@@ -433,7 +433,7 @@ export class SurveyResolver {
           if(e.text) {
             response.push({
               answer: e.text,
-              date: v.createdAt.toLocaleString(),
+              date: v.createdAt.toLocaleString('id-ID', { hour12: true }).replace(/[.]/g, ":"),
               unit: v.unit,
               user: v.user
             })
@@ -462,7 +462,7 @@ export class SurveyResolver {
               answer: e.text,
               user: v.user,
               unit: v.unit,
-              date: v.createdAt.toLocaleString()
+              date: v.createdAt.toLocaleString('id-ID', { hour12: true }).replace(/[.]/g, ":")
             })
           }
         })
