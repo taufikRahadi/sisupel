@@ -12,11 +12,10 @@ import { UserService } from "./user.service";
     MongooseModule.forFeature([{
       name: User.name,
       schema: UserSchema
-    }]),
-    MongooseModule.forFeature([{
+    }, {
       name: Unit.name,
       schema: UnitModel
-    }])
+    }]),
   ],
   providers: [
     UserService, UserResolver
