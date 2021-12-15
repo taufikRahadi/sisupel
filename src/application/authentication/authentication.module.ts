@@ -9,29 +9,7 @@ import { UserService } from "../user/user.service";
 import { AuthenticationResolver } from "./authentication.resolver";
 import { AuthenticationService } from "./authentication.service";
 
-@Module({
-  imports: [
-    MongooseModule.forFeature([{
-      name: User.name,
-      schema: UserSchema
-    }]),
-    MongooseModule.forFeature([{
-      name: Role.name,
-      schema: RoleModel
-    }]),
-    MongooseModule.forFeature([{
-      name: RolePrivilege.name,
-      schema: RolePrivilegeModel
-    }]),
-    MongooseModule.forFeature([{
-      name: Unit.name,
-      schema: UnitModel
-    }]),
-  ],
-  providers: [
-    UserService, AuthenticationService, AuthenticationResolver, ConfigService
-  ]
-})
+@Module({})
 export class AuthenticationModule {
 
   static use(): DynamicModule {
@@ -44,16 +22,13 @@ export class AuthenticationModule {
         MongooseModule.forFeature([{
           name: User.name,
           schema: UserSchema
-        }]),
-        MongooseModule.forFeature([{
+        }, {
           name: Role.name,
           schema: RoleModel
-        }]),
-        MongooseModule.forFeature([{
+        }, {
           name: RolePrivilege.name,
           schema: RolePrivilegeModel
-        }]),
-        MongooseModule.forFeature([{
+        }, {
           name: Unit.name,
           schema: UnitModel
         }]),
