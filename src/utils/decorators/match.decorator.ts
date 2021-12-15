@@ -12,6 +12,7 @@ export function Match(property: string, validationOptions?: ValidationOptions) {
       target: object.constructor,
       propertyName,
       options: {
+        ...validationOptions,
         message: "Kata sandi baru dan kata sandi konfirmasi tidak cocok"
       },
       constraints: [property],
