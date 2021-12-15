@@ -15,6 +15,21 @@ export class AuthenticationModule {
   static use(): DynamicModule {
     return {
       module: AuthenticationModule,
+      imports: [
+        MongooseModule.forFeature([{
+          name: User.name,
+          schema: UserSchema
+        }, {
+          name: Role.name,
+          schema: RoleModel
+        }, {
+          name: RolePrivilege.name,
+          schema: RolePrivilegeModel
+        }, {
+          name: Unit.name,
+          schema: UnitModel
+        }])
+      ],
       providers: [
         UserService, AuthenticationService, ConfigService
       ],
